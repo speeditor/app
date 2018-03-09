@@ -108,6 +108,8 @@ class WikiFactoryLoader {
 			// normal HTTP request
 			$this->mServerName = strtolower( $server['SERVER_NAME'] );
 
+			$this->pathParams = ltrim( parse_url( $server['REQUEST_URI'], PHP_URL_PATH ), '/' );
+
 			if ( isset( $requestParams['langpath'] ) ) {
 				if ( $requestParams['langpath'] !== 'en' ) {
 					$langCode = $requestParams['langpath'];
