@@ -375,9 +375,9 @@ class MercuryApiController extends WikiaController {
 				// Set it before we remove the namespace from $displayTitle
 				$data['htmlTitle'] = $this->mercuryApi->getHtmlTitleForPage( $title, $displayTitle );
 
-				if ( MercuryApiMainPageHandler::shouldGetMainPageData( $isMainPage ) ) {
-					$data['curatedMainPageData'] = MercuryApiMainPageHandler::getMainPageData( $this->mercuryApi );
-				} else {
+				//if ( MercuryApiMainPageHandler::shouldGetMainPageData( $isMainPage ) ) {
+				//	$data['curatedMainPageData'] = MercuryApiMainPageHandler::getMainPageData( $this->mercuryApi );
+				//} else {
 					if ( !empty( $articleData['content'] ) ) {
 						$data['article'] = $articleData;
 						$data['article']['hasPortableInfobox'] = !empty( \Wikia::getProps( $title->getArticleID(), PortableInfoboxDataService::INFOBOXES_PROPERTY_NAME ) );
@@ -427,7 +427,7 @@ class MercuryApiController extends WikiaController {
 								MercuryApiArticleHandler::getArticleData( $this->mercuryApi, $article )
 							);
 					}
-				}
+				//}
 			}
 
 			\Hooks::run( 'MercuryPageData', [ $title, &$data ] );
