@@ -14,21 +14,21 @@ class DataTables {
 	public static function markTranscludedTables( &$wikitext, &$finalTitle ) {
 		wfProfileIn( __METHOD__ );
 		//check for tables
-		if ( static::shouldBeProcessed() ) {
-			// marks wikitext tables, omits {{{{{|subst:}}} cases by checking if there is only one '{' before '|'
-			if ( preg_match_all( "/^(.*[^\\{])?\\{\\|(.*)/\n", $wikitext, $wikiTables ) ) {
-				for ( $i = 0; $i < count( $wikiTables[ 0 ] ); $i++ ) {
-					$wikitext = static::markTable( $wikitext, $wikiTables[ 0 ][ $i ], $wikiTables[ 2 ][ $i ], $wikiTables[1][$i].'{|' );
-				}
-			}
-			// marks html tables
-			if ( preg_match_all( "/<table(.*)(\\/?>)/sU", $wikitext, $htmlTables ) ) {
-				for ( $i = 0; $i < count( $htmlTables[ 0 ] ); $i++ ) {
-					$wikitext = static::markTable( $wikitext,
-						$htmlTables[ 0 ][ $i ], $htmlTables[ 1 ][ $i ], '<table', $htmlTables[ 2 ][ $i ] );
-				}
-			}
-		}
+		//if ( static::shouldBeProcessed() ) {
+		//	// marks wikitext tables, omits {{{{{|subst:}}} cases by checking if there is only one '{' before '|'
+		//	if ( preg_match_all( "/^(.*[^\\{])?\\{\\|(.*)/\n", $wikitext, $wikiTables ) ) {
+		//		for ( $i = 0; $i < count( $wikiTables[ 0 ] ); $i++ ) {
+		//			$wikitext = static::markTable( $wikitext, $wikiTables[ 0 ][ $i ], $wikiTables[ 2 ][ $i ], $wikiTables[1][$i].'{|' );
+		//		}
+		//	}
+		//	// marks html tables
+		/*	if ( preg_match_all( "/<table(.*)(\\/?>)/sU", $wikitext, $htmlTables ) ) {*/
+		//		for ( $i = 0; $i < count( $htmlTables[ 0 ] ); $i++ ) {
+		//			$wikitext = static::markTable( $wikitext,
+		//				$htmlTables[ 0 ][ $i ], $htmlTables[ 1 ][ $i ], '<table', $htmlTables[ 2 ][ $i ] );
+		//		}
+		//	}
+		//}
 
 		wfProfileOut( __METHOD__ );
 
@@ -45,11 +45,11 @@ class DataTables {
 	 */
 	public static function markDataTables( $parser, &$html ) {
 		wfProfileIn( __METHOD__ );
-
-		if ( $html && static::shouldBeProcessed() ) {
-			$html = self::processTables( $html );
-		}
-		wfProfileOut( __METHOD__ );
+		//
+		//if ( $html && static::shouldBeProcessed() ) {
+		//	$html = self::processTables( $html );
+		//}
+		//wfProfileOut( __METHOD__ );
 
 		return true;
 	}
