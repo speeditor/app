@@ -987,18 +987,7 @@ class ArticlesApiController extends WikiaApiController {
 
 		if ( $parsedArticle instanceof ParserOutput ) {
 			$articleContent = json_decode( $parsedArticle->getText() );
-			//$content = $articleContent->content;
-
-			$tidy = new tidy();
-			$tidy->parseString( $articleContent->content );
-			$tidy->cleanRepair();
-			$content = array_reduce(
-				$tidy->body()->child,
-				function ( $acc, $child ) {
-					return $acc . $child->value;
-				}
-			);
-
+			$content = $articleContent->content;
 			$wgArticleAsJson = false;
 		} else {
 			$wgArticleAsJson = false;
