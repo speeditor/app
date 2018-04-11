@@ -380,6 +380,18 @@ class MercuryApiController extends WikiaController {
 				} else {
 					if ( !empty( $articleData['content'] ) ) {
 						$data['article'] = $articleData;
+
+						$tidy = new tidy();
+						$tidy->parseString( $articleData['content'] );
+						$tidy->cleanRepair();
+						$content = array_reduce(
+							$tidy->body()->child,
+							function ( $acc, $child ) {
+								return $acc . $child->value;
+							}
+						);
+						$data['article']['content'] = $content;
+
 						$data['article']['hasPortableInfobox'] = !empty( \Wikia::getProps( $title->getArticleID(), PortableInfoboxDataService::INFOBOXES_PROPERTY_NAME ) );
 
 						$featuredVideo = MercuryApiArticleHandler::getFeaturedVideoDetails( $title );
