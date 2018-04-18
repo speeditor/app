@@ -21,93 +21,93 @@ class WikiaMobileHooks {
 		global $wgWikiaMobileDisableMediaGrouping;
 		wfProfileIn( __METHOD__ );
 
-		if ( empty( $wgWikiaMobileDisableMediaGrouping ) && F::app()->checkSkin( 'wikiamobile' ) ) {
-			$matches = array();
-			$translatedNs = self::getLocalizedMediaNsString();
-
-			//capture all the clusters (more than one consecuteive item) of wikitext media tags
-			//and convert them to gallery tags (i.e. media grouping)
-			if (
-				!empty( $translatedNs ) &&
-				preg_match_all(
-				/*
-				 * This regex is to catch situations like these
-				 * [[Image:name.jpg]]
-				 * [[Image:name.jpg]]
-				 * and also images with links in captions
-				 * [[Image:name.jpg|[[Link]] caption]]
-				 * [[Image:name.jpg|[[Link]] caption [[Link|link]]]]
-				 */
-					'/(?:\[\[\b(?:' . $translatedNs . ')\b:[^\]\[]*(?:\[\[[^\[]*\]\][^\[]*)*\]\]\s*){2,}/',
-					$text,
-					$matches,
-					PREG_OFFSET_CAPTURE
-				)
-			) {
-				$count = count( $matches[0] );
-
-				//replacing substrings, you gotta start from the bottom ;)
-				//to keep char offsets valid
-				for ( $x = $count - 1; $x >= 0; $x-- ) {
-					$match = $matches[0][$x];
-
-					$submatches = array();
-
-					$itemsCount = preg_match_all(
-						'/(?<=\[\[' . $translatedNs . '):([^\]\[]*(?:\[\[[^\[]*\]\][^\[]*)*(?=\]\])\s*?)/',
-						$match[0],
-						$submatches,
-						PREG_SET_ORDER
-					);
-
-					if ( $itemsCount > 0 ) {
-						$result = "<gallery>\n";
-
-						//analyze entries
-						foreach ( $submatches as $item ) {
-							$parts = explode( '|', $item[1] );
-							$components = [];
-
-							foreach ( $parts as $index => $part ) {
-								//File name
-								if ( $index == 0 ) {
-									$components[] = $part;
-									continue;
-								}
-
-								if ( !empty( $part ) ) {
-									//Link part
-									if ( strpos( 'link=', $part ) === 0 ) {
-										$components[] = $part;
-										continue;
-									}
-
-									//All parts of caption as this might be exploded ie.:
-									//[[File:aa.jpg|thumb|300px|caption with [[Link|LINK]] right?]]
-									if ( !preg_match( '/(?:frame|thumb|right|left|\d+\s?px)/', $part ) ) {
-										$components[] = htmlspecialchars( $part );
-									}
-
-								}
-							}
-
-							$result .= implode( '|', $components ) . "\n";
-						}
-
-						//IMPORTANT: keep a new line at the end of the string to preserve
-						//the wikitext that comes next
-						$result .= "</gallery>\n";
-
-						$text = substr_replace(
-							$text,
-							$result,
-							$match[1],
-							strlen( $match[0] )
-						);
-					}
-				}
-			}
-		}
+		//if ( empty( $wgWikiaMobileDisableMediaGrouping ) && F::app()->checkSkin( 'wikiamobile' ) ) {
+		//	$matches = array();
+		//	$translatedNs = self::getLocalizedMediaNsString();
+		//
+		//	//capture all the clusters (more than one consecuteive item) of wikitext media tags
+		//	//and convert them to gallery tags (i.e. media grouping)
+		//	if (
+		//		!empty( $translatedNs ) &&
+		//		preg_match_all(
+		//		/*
+		//		 * This regex is to catch situations like these
+		//		 * [[Image:name.jpg]]
+		//		 * [[Image:name.jpg]]
+		//		 * and also images with links in captions
+		//		 * [[Image:name.jpg|[[Link]] caption]]
+		//		 * [[Image:name.jpg|[[Link]] caption [[Link|link]]]]
+		//		 */
+		//			'/(?:\[\[\b(?:' . $translatedNs . ')\b:[^\]\[]*(?:\[\[[^\[]*\]\][^\[]*)*\]\]\s*){2,}/',
+		//			$text,
+		//			$matches,
+		//			PREG_OFFSET_CAPTURE
+		//		)
+		//	) {
+		//		$count = count( $matches[0] );
+		//
+		//		//replacing substrings, you gotta start from the bottom ;)
+		//		//to keep char offsets valid
+		//		for ( $x = $count - 1; $x >= 0; $x-- ) {
+		//			$match = $matches[0][$x];
+		//
+		//			$submatches = array();
+		//
+		//			$itemsCount = preg_match_all(
+		//				'/(?<=\[\[' . $translatedNs . '):([^\]\[]*(?:\[\[[^\[]*\]\][^\[]*)*(?=\]\])\s*?)/',
+		//				$match[0],
+		//				$submatches,
+		//				PREG_SET_ORDER
+		//			);
+		//
+		//			if ( $itemsCount > 0 ) {
+		//				$result = "<gallery>\n";
+		//
+		//				//analyze entries
+		//				foreach ( $submatches as $item ) {
+		//					$parts = explode( '|', $item[1] );
+		//					$components = [];
+		//
+		//					foreach ( $parts as $index => $part ) {
+		//						//File name
+		//						if ( $index == 0 ) {
+		//							$components[] = $part;
+		//							continue;
+		//						}
+		//
+		//						if ( !empty( $part ) ) {
+		//							//Link part
+		//							if ( strpos( 'link=', $part ) === 0 ) {
+		//								$components[] = $part;
+		//								continue;
+		//							}
+		//
+		//							//All parts of caption as this might be exploded ie.:
+		//							//[[File:aa.jpg|thumb|300px|caption with [[Link|LINK]] right?]]
+		//							if ( !preg_match( '/(?:frame|thumb|right|left|\d+\s?px)/', $part ) ) {
+		//								$components[] = htmlspecialchars( $part );
+		//							}
+		//
+		//						}
+		//					}
+		//
+		//					$result .= implode( '|', $components ) . "\n";
+		//				}
+		//
+		//				//IMPORTANT: keep a new line at the end of the string to preserve
+		//				//the wikitext that comes next
+		//				$result .= "</gallery>\n";
+		//
+		//				$text = substr_replace(
+		//					$text,
+		//					$result,
+		//					$match[1],
+		//					strlen( $match[0] )
+		//				);
+		//			}
+		//		}
+		//	}
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -161,31 +161,31 @@ class WikiaMobileHooks {
 		global $wgArticleAsJson;
 		wfProfileIn( __METHOD__ );
 
-		if ( F::app()->checkSkin( 'wikiamobile', $skin ) ) {
-			//retrieve section index from mw:editsection tag
-			$section = preg_match( '#section="(.*?)"#', $link, $matches ) ? $matches[1] : '';
-			if ( $wgArticleAsJson || F::app()->wg->User->isAnon() ) {
-				$link = '';
-			}
-			//remove bold, italics, underline and anchor tags from section headings (also optimizes output size)
-			$text = preg_replace( '/<\/?(b|u|i|a|em|strong){1}(\s+[^>]*)*>/im', '', $text );
-			$chevron = '';
-			// this is pseudo-versioning query param for collapsible sections (XW-4393)
-			// should be removed after all App caches are invalidated
-			if ( !empty( RequestContext::getMain()
-				->getRequest()
-				->getVal( 'collapsibleSections' ) )
-			) {
-				// if h2 and mobile-wiki
-				if ( $level == 2 && $wgArticleAsJson ) {
-					$text = '<div class="section-header-label">' . $text . '</div>';
-					$chevron =
-						'<svg class="wds-icon wds-icon-small chevron" viewBox="0 0 18 18" width="18" height="18"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#wds-icons-menu-control-small"></use></svg>';
-					$attribs = 'aria-controls="' . $anchor . '-collapsible-section"' . $attribs;
-				}
-			}
-			$ret = "<h{$level} id='{$anchor}' section='{$section}' {$attribs}{$text}{$link}{$chevron}</h{$level}>";
-		}
+		//if ( F::app()->checkSkin( 'wikiamobile', $skin ) ) {
+		//	//retrieve section index from mw:editsection tag
+		//	$section = preg_match( '#section="(.*?)"#', $link, $matches ) ? $matches[1] : '';
+		//	if ( $wgArticleAsJson || F::app()->wg->User->isAnon() ) {
+		//		$link = '';
+		//	}
+		//	//remove bold, italics, underline and anchor tags from section headings (also optimizes output size)
+		//	$text = preg_replace( '/<\/?(b|u|i|a|em|strong){1}(\s+[^>]*)*>/im', '', $text );
+		//	$chevron = '';
+		//	// this is pseudo-versioning query param for collapsible sections (XW-4393)
+		//	// should be removed after all App caches are invalidated
+		//	if ( !empty( RequestContext::getMain()
+		//		->getRequest()
+		//		->getVal( 'collapsibleSections' ) )
+		//	) {
+		//		// if h2 and mobile-wiki
+		//		if ( $level == 2 && $wgArticleAsJson ) {
+		//			$text = '<div class="section-header-label">' . $text . '</div>';
+		//			$chevron =
+		//				'<svg class="wds-icon wds-icon-small chevron" viewBox="0 0 18 18" width="18" height="18"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#wds-icons-menu-control-small"></use></svg>';
+		//			$attribs = 'aria-controls="' . $anchor . '-collapsible-section"' . $attribs;
+		//		}
+		//	}
+		//	$ret = "<h{$level} id='{$anchor}' section='{$section}' {$attribs}{$text}{$link}{$chevron}</h{$level}>";
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -200,16 +200,16 @@ class WikiaMobileHooks {
 	 * @param bool $lang
 	 */
 	public static function onDoEditSectionLink( $skin, $nt, $section, $tooltip, &$result, $lang ) {
-		if ( F::app()->checkSkin( 'wikiamobile', $skin ) ) {
-			$link = F::app()->wg->Title->getLocalURL( [
-				'section' => $section,
-				'action' => 'edit'
-			] );
-
-			$result = "<a href='$link' class='editsection'></a>";
-
-			return false;
-		}
+		//if ( F::app()->checkSkin( 'wikiamobile', $skin ) ) {
+		//	$link = F::app()->wg->Title->getLocalURL( [
+		//		'section' => $section,
+		//		'action' => 'edit'
+		//	] );
+		//
+		//	$result = "<a href='$link' class='editsection'></a>";
+		//
+		//	return false;
+		//}
 
 		return true;
 	}
@@ -226,11 +226,11 @@ class WikiaMobileHooks {
 	 */
 	static public function onLinkBegin( $skin, $target, &$text, &$customAttribs, &$query, &$options, &$ret ){
 		wfProfileIn( __METHOD__ );
-		if ( in_array( 'broken', $options ) && F::app()->checkSkin( 'wikiamobile', $skin ) ) {
-			$ret = $text;
-			wfProfileOut( __METHOD__ );
-			return false;
-		}
+		//if ( in_array( 'broken', $options ) && F::app()->checkSkin( 'wikiamobile', $skin ) ) {
+		//	$ret = $text;
+		//	wfProfileOut( __METHOD__ );
+		//	return false;
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -244,37 +244,37 @@ class WikiaMobileHooks {
 	static public function onCategoryPageView( CategoryPage $categoryPage ): bool {
 		wfProfileIn( __METHOD__ );
 
-		$app = F::app();
-
-		if ( $app->checkSkin( 'wikiamobile' ) ) {
-			//lets do some local caching
-			$out = $app->wg->Out;
-			$title = $categoryPage->getTitle();
-			$text = $title->getText();
-
-			//converting categoryArticle to Article to avoid circular reference in CategoryPage::view
-			( new Article( $title ) )->view();
-
-			//add scripts that belongs only to category pages
-			$scripts = AssetsManager::getInstance()->getURL( array( 'wikiamobile_categorypage_js' ) );
-
-			//this is going to be additional call but at least it won't be loaded on every page
-			foreach ( $scripts as $s ) {
-				$out->addScript( '<script src="' . Sanitizer::encodeAttribute( $s ) . '"></script>' );
-			}
-
-			//set proper titles for a page
-			$out->setPageTitle( $text );
-			$out->setHTMLTitle( $title->getPrefixedText() );
-
-			//render lists: exhibition and alphabetical
-			$params = array( 'categoryPage' => $categoryPage );
-			$out->addHTML( $app->renderView( 'WikiaMobileCategoryService', 'categoryExhibition', $params ) );
-			$out->addHTML( $app->renderView( 'WikiaMobileCategoryService', 'alphabeticalList', $params ) );
-
-			wfProfileOut( __METHOD__ );
-			return false;
-		}
+		//$app = F::app();
+		//
+		//if ( $app->checkSkin( 'wikiamobile' ) ) {
+		//	//lets do some local caching
+		//	$out = $app->wg->Out;
+		//	$title = $categoryPage->getTitle();
+		//	$text = $title->getText();
+		//
+		//	//converting categoryArticle to Article to avoid circular reference in CategoryPage::view
+		//	( new Article( $title ) )->view();
+		//
+		//	//add scripts that belongs only to category pages
+		//	$scripts = AssetsManager::getInstance()->getURL( array( 'wikiamobile_categorypage_js' ) );
+		//
+		//	//this is going to be additional call but at least it won't be loaded on every page
+		//	foreach ( $scripts as $s ) {
+		//		$out->addScript( '<script src="' . Sanitizer::encodeAttribute( $s ) . '"></script>' );
+		//	}
+		//
+		//	//set proper titles for a page
+		//	$out->setPageTitle( $text );
+		//	$out->setHTMLTitle( $title->getPrefixedText() );
+		//
+		//	//render lists: exhibition and alphabetical
+		//	$params = array( 'categoryPage' => $categoryPage );
+		//	$out->addHTML( $app->renderView( 'WikiaMobileCategoryService', 'categoryExhibition', $params ) );
+		//	$out->addHTML( $app->renderView( 'WikiaMobileCategoryService', 'alphabeticalList', $params ) );
+		//
+		//	wfProfileOut( __METHOD__ );
+		//	return false;
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -287,16 +287,16 @@ class WikiaMobileHooks {
 	static public function onArticlePurge( WikiPage $page ): bool {
 		wfProfileIn( __METHOD__ );
 
-		$title = $page->getTitle();
-
-		if ( $title->getNamespace() == NS_CATEGORY ) {
-			$category = Category::newFromTitle( $title );
-
-			$model = new WikiaMobileCategoryModel();
-
-			$model->purgeItemsCollectionCache( $category->getName() );
-			$model->purgeExhibitionItemsCacheKey( $title->getText() );
-		}
+		//$title = $page->getTitle();
+		//
+		//if ( $title->getNamespace() == NS_CATEGORY ) {
+		//	$category = Category::newFromTitle( $title );
+		//
+		//	$model = new WikiaMobileCategoryModel();
+		//
+		//	$model->purgeItemsCollectionCache( $category->getName() );
+		//	$model->purgeExhibitionItemsCacheKey( $title->getText() );
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -310,36 +310,36 @@ class WikiaMobileHooks {
 	static public function onBeforeDisplayNoArticleText( $article ){
 		wfProfileIn( __METHOD__ );
 
-		if ( F::app()->checkSkin( 'wikiamobile' )  ) {
-			$title = $article->getTitle();
-			$ns = $title->getNamespace();
-
-			if ( $ns == NS_USER ) {
-				//if user exists and it is not subpage display masthead
-				//otherwise show 404 page
-				$user = User::newFromName( $title->getBaseText() );
-
-				if ( ( $user instanceof User && $user->getId() > 0 ) && !$title->isSubpage() ) {
-					wfProfileOut( __METHOD__ );
-					return true;
-				}
-			} else if ( $ns == NS_CATEGORY ) {
-				//if it is a category that has some pages display it as well
-				$category = Category::newFromTitle( $title );
-
-				if ( $category instanceof Category && ( $category->getPageCount() + $category->getSubcatCount() + $category->getFileCount() ) > 0 ) {
-					wfProfileOut( __METHOD__ );
-					return true;
-				}
-			//Do not show error on non-blank help pages (including shared help)
-			} else if ( $ns == NS_HELP && ( $title->isKnown() ||
-					is_callable('SharedHelpArticleExists') && SharedHelpArticleExists( $title ) ) ) {
-				wfProfileOut( __METHOD__ );
-				return true;
-			}
-
-			WikiaMobileErrorService::$displayErrorPage = true;
-		}
+		//if ( F::app()->checkSkin( 'wikiamobile' )  ) {
+		//	$title = $article->getTitle();
+		//	$ns = $title->getNamespace();
+		//
+		//	if ( $ns == NS_USER ) {
+		//		//if user exists and it is not subpage display masthead
+		//		//otherwise show 404 page
+		//		$user = User::newFromName( $title->getBaseText() );
+		//
+		//		if ( ( $user instanceof User && $user->getId() > 0 ) && !$title->isSubpage() ) {
+		//			wfProfileOut( __METHOD__ );
+		//			return true;
+		//		}
+		//	} else if ( $ns == NS_CATEGORY ) {
+		//		//if it is a category that has some pages display it as well
+		//		$category = Category::newFromTitle( $title );
+		//
+		//		if ( $category instanceof Category && ( $category->getPageCount() + $category->getSubcatCount() + $category->getFileCount() ) > 0 ) {
+		//			wfProfileOut( __METHOD__ );
+		//			return true;
+		//		}
+		//	//Do not show error on non-blank help pages (including shared help)
+		//	} else if ( $ns == NS_HELP && ( $title->isKnown() ||
+		//			is_callable('SharedHelpArticleExists') && SharedHelpArticleExists( $title ) ) ) {
+		//		wfProfileOut( __METHOD__ );
+		//		return true;
+		//	}
+		//
+		//	WikiaMobileErrorService::$displayErrorPage = true;
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -356,14 +356,14 @@ class WikiaMobileHooks {
 		wfProfileIn( __METHOD__ );
 		$app = F::app();
 
-		if( $app->checkSkin( 'wikiamobile', $skin ) && WikiaMobileErrorService::$displayErrorPage == true ) {
-			$out->clearHTML();
-
-			$out->addHTML( $app->renderView( 'WikiaMobileErrorService', 'pageNotFound', [ 'out' => $out ] ) );
-
-			wfProfileOut( __METHOD__ );
-			return false;
-		}
+		//if( $app->checkSkin( 'wikiamobile', $skin ) && WikiaMobileErrorService::$displayErrorPage == true ) {
+		//	$out->clearHTML();
+		//
+		//	$out->addHTML( $app->renderView( 'WikiaMobileErrorService', 'pageNotFound', [ 'out' => $out ] ) );
+		//
+		//	wfProfileOut( __METHOD__ );
+		//	return false;
+		//}
 
 		wfProfileOut( __METHOD__ );
 		return true;
@@ -399,12 +399,12 @@ class WikiaMobileHooks {
 	static private function cleanMobileOutput( &$text ) {
 		wfProfileIn( __METHOD__ );
 
-		//remove inline styling to avoid weird results and optimize the output size
-		$attributesToStrip = [ 'style', 'color', 'bgcolor', 'border', 'align', 'cellspacing', 'cellpadding', 'hspace', 'vspace' ];
-		$text = HtmlHelper::stripAttributes( $text, $attributesToStrip );
-
-		//don't let the article content be an empty space
-		$text = trim( $text );
+		////remove inline styling to avoid weird results and optimize the output size
+		//$attributesToStrip = [ 'style', 'color', 'bgcolor', 'border', 'align', 'cellspacing', 'cellpadding', 'hspace', 'vspace' ];
+		//$text = HtmlHelper::stripAttributes( $text, $attributesToStrip );
+		//
+		////don't let the article content be an empty space
+		//$text = trim( $text );
 
 		wfProfileOut( __METHOD__ );
 	}
