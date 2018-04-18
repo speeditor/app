@@ -290,23 +290,23 @@ class ImageServing {
 	public function getUrl( $name, $width = 1, $height = 1 ) {
 		wfProfileIn( __METHOD__ );
 
-		if ( $name instanceof File || $name instanceof GlobalFile ) {
-			$img = $name;
-		} else {
-			//TODO: Create files local cache of IS
-			$file_title = Title::newFromText( $name, NS_FILE );
-			$img = wfFindFile( $file_title );
-			if ( empty( $img ) ) {
-				wfProfileOut( __METHOD__ );
-				return "";
-			}
-		}
-
-		if ( WikiaFileHelper::isVideoFile( $img ) ) {
-			$H = ( float ) ( ( $width ) * ( $this->proportion['h'] / $this->proportion['w'] ) );
-			$this->tmpDeltaY = 0.5 - $H / $height / 2;
-		}
-
+		//if ( $name instanceof File || $name instanceof GlobalFile ) {
+		//	$img = $name;
+		//} else {
+		//	//TODO: Create files local cache of IS
+		//	$file_title = Title::newFromText( $name, NS_FILE );
+		//	$img = wfFindFile( $file_title );
+		//	if ( empty( $img ) ) {
+		//		wfProfileOut( __METHOD__ );
+		//		return "";
+		//	}
+		//}
+		//
+		//if ( WikiaFileHelper::isVideoFile( $img ) ) {
+		//	$H = ( float ) ( ( $width ) * ( $this->proportion['h'] / $this->proportion['w'] ) );
+		//	$this->tmpDeltaY = 0.5 - $H / $height / 2;
+		//}
+return '';
 		return $this->getVignetteUrl( $img, $width, $height );
 	}
 
