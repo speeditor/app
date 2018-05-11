@@ -13,4 +13,10 @@ header( 'Content-Type: text/plain' );
 header( 'Cache-Control: s-maxage=' . $wikiaRobots->getRobotsTxtCachePeriod() );
 header( 'X-Pass-Cache-Control: public, max-age=' . $wikiaRobots->getRobotsTxtCachePeriod() );
 
+global $wgServer;
+$url = $wgServer . '/wikia.php?controller=MercuryApi&method=getWikiVariables';
+echo $url."\n";
+$resp = \Http::get( $url, 10, [] );
+echo "Resonse is ".json_encode($resp)."\n\n";
+
 echo join( PHP_EOL, $robots->getContents() ) . PHP_EOL;
