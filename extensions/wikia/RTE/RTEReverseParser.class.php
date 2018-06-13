@@ -759,7 +759,7 @@ class RTEReverseParser {
 			}
 		}
 
-		if (self::nextSiblingIs($node,'p') && self::wasHtml($node->nextSibling) && !$node->nextSibling->hasAttribute(self::DATA_RTE_LINE_START)) {
+		if ((self::nextSiblingIs($node,'p') && self::wasHtml($node->nextSibling) && !$node->nextSibling->hasAttribute(self::DATA_RTE_LINE_START)) || ($node->nextSibling && self::isPlaceholder($node->nextSibling))) {
 			// support foo<p>bar</p> (BugId:3559)
 			$out = $textContent;
 		}
