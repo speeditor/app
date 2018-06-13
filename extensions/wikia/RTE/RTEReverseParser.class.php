@@ -428,7 +428,9 @@ class RTEReverseParser {
 						!self::isChildOf( $node, 'li' ) &&
 						!self::isChildOf( $node, 'dd' ) &&
 						!self::isChildOf( $node, 'dt' ) ) {
-						$out = "\n{$out}";
+						if ( !empty($data['lineStart'])) {
+							$out = "\n{$out}";
+						}
 
 						if ( self::nextSiblingIs( $node, 'p' ) ) {
 							$out = "{$out}\n";
