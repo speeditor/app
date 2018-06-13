@@ -422,7 +422,18 @@ class RTEReverseParser {
 					if ( $node->nodeName === 'div' && !empty( $data['spacesafter'] ) ) {
 						$out = $out . $data['spacesafter'];
 					}
-					if ( $node->nodeName === 'tr' ) {
+					if ( $node->nodeName === 'div' &&
+						!self::isFirstChild( $node ) &&
+						!self::previousSiblingIs( $node, [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' ] ) &&
+						!self::isChildOf( $node, 'li' ) &&
+						!self::isChildOf( $node, 'dd' ) &&
+						!self::isChildOf( $node, 'dt' ) ) {
+						$out = "\n{$out}";
+
+						if ( self::nextSiblingIs( $node, 'p' ) ) {
+							$out = "{$out}\n";
+						}
+					} elseif ( $node->nodeName === 'tr' ) {
 						if ( !empty( $data['template-only'] ) ) {
 							// XW-4742: case when whole table row is defined within template
 							$out = "\n{$out}";
