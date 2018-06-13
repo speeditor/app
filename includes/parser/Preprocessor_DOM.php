@@ -1465,14 +1465,17 @@ class PPFrame_DOM implements PPFrame {
 	 * @return string tagName div or span
 	 */
 	function getPlaceholderTagName( string $text ): string {
+		global $wgRTEParserEnabled;
 		if ( substr( $text, 0, 2) === '|-' ) {
 			// XW-4742: template defines table row
 			return 'tr';
 		}
 
+		$previousVal = $wgRTEParserEnabled;
+		$wgRTEParserEnabled = false;
 		$html = $this->parser->internalParse( $text, false );
 		$html = $this->parser->doBlockLevels( $html, false);
-
+		$wgRTEParserEnabled = $previousVal;
 		// $html returned above, if $text consists only from plain text, is wrapped in <p></p> which should not be
 		// the reason to treat whole template as block element
 		$html = preg_replace('/^<p>/', '', $html);

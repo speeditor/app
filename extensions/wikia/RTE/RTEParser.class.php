@@ -507,6 +507,9 @@ class RTEParser extends Parser {
 		// <!-- RTE_EMPTY_LINES_BEFORE_1 --><p>
 		$html = preg_replace('%<!-- RTE_EMPTY_LINES_BEFORE_(\d+) -->(</[^>]+></)%s', '\2', $html);
 
+		// remove EMPTY_LINES_BEFORE from within placeholder wrappers
+		$html = preg_replace_callback('/<(div|span) class="placeholder placeholder-double-brackets"[^>]+>&#x200b;.*?&#x200b;<\/(div|span)>/s', 'RTEParser::emptyLines', $html);
+
 		// move empty lines counter data from comment to next opening tag attribute (thx to Marooned)
 		// XW-4626: prevent adding data-rte-empty-lines-before to inline tags to not break paragraph layout
 		$blockLevelsRegex = implode('|', HtmlHelper::BLOCK_ELEMENTS);
@@ -631,6 +634,14 @@ class RTEParser extends Parser {
 
 		return $ret;
 	}
+
+	/**
+	 * Callback removing RTE_EMPTY_LINES_BEFORE comments from within placeholders
+	 */
+	public static function emptyLines($matches)  {
+		return preg_replace("/<!-- RTE_EMPTY_LINES_BEFORE_(\d+) -->/", '', $matches[0]);
+	}
+
 
 	/**
 	 * Mark HTML entities using \x7f "magic" character
