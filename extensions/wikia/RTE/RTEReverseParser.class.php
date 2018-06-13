@@ -422,6 +422,12 @@ class RTEReverseParser {
 					if ( $node->nodeName === 'div' && !empty( $data['spacesafter'] ) ) {
 						$out = $out . $data['spacesafter'];
 					}
+
+					if ( $node->nodeName === 'div') {
+						if ( self::nextSiblingIs( $node, 'p' ) ) {
+							$out = "{$out}\n";
+						}
+					}
 					if ( $node->nodeName === 'div' &&
 						!self::isFirstChild( $node ) &&
 						!self::previousSiblingIs( $node, [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' ] ) &&
@@ -434,11 +440,6 @@ class RTEReverseParser {
 
 						if ( $node->hasAttribute(self::DATA_RTE_EMPTY_LINES_BEFORE) ) {
 							$out = "\n{$out}";
-						}
-
-
-						if ( self::nextSiblingIs( $node, 'p' ) ) {
-							$out = "{$out}\n";
 						}
 					} elseif ( $node->nodeName === 'tr' ) {
 						if ( !empty( $data['template-only'] ) ) {
