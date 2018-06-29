@@ -1646,7 +1646,7 @@ class Wikia {
 	 * @author macbre
 	 */
 	private static function addExtraHeaders(WebResponse $response) {
-		global $wgRequestTime;
+		global $wgRequestTime, $wgCityId, $wgOut;
 		$elapsed = microtime( true ) - $wgRequestTime;
 
 		$response->header( sprintf( 'X-Served-By: %s', wfHostname() ) );
@@ -1659,6 +1659,11 @@ class Wikia {
 
 		$response->header( 'X-Cache: ORIGIN' );
 		$response->header( 'X-Cache-Hits: ORIGIN' );
+
+		$surrogateKey = implode(' ',
+			array_merge( $wgOut->getSurrogateKeys(), Wikia::mediawikiSurrogateKeys( $wgCityId ) ) );
+		$response->header( 'Surrogate-Key: ' . $surrogateKey );
+		$response->header( 'X-Surrogate-Key: ' . $surrogateKey );
 	}
 
 	/**
@@ -1948,6 +1953,16 @@ class Wikia {
 			return 'wiki-' . $wikiId;
 		}
 		return wfGetEffectiveHostname() . '-wiki-' . $wikiId;
+	}
+
+	public static function mediawikiSurrogateKeys( $wikiId ) {
+		$keys = [];
+		$surrogateKey = self::wikiSurrogateKey( $wikiId );
+		if ( $surrogateKey ) {
+			$keys[] = $surrogateKey;
+			$keys[] = $surrogateKey . '-mediawiki';
+		}
+		return $keys;
 	}
 
 	public static function surrogateKey( $args ) {

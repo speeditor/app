@@ -121,6 +121,8 @@ class OutputPage extends ContextSource {
 	/// Array of elements in <head>. Parser might add its own headers!
 	var $mHeadItems = array();
 
+	var $surrogateKeys = array();
+
 	// @todo FIXME: Next variables probably comes from the resource loader
 	var $mModules = array(), $mModuleScripts = array(), $mModuleStyles = array(), $mModuleMessages = array();
 	var $mResourceLoader;
@@ -3789,12 +3791,14 @@ $templates
 	 */
 	public function tagWithSurrogateKeys( $keyArr ) {
 		if(is_array($keyArr)) {
-			header( 'X-Surrogate-Key: ' . implode( $keyArr, ' '), false );
-			header( 'Surrogate-Key: ' . implode( $keyArr, ' '), false );
+			$this->surrogateKeys = array_merge( $this->surrogateKeys, $keyArr);
 		} else {
-			header( 'X-Surrogate-Key: ' . $keyArr, false );
-			header( 'Surrogate-Key: ' . $keyArr, false );
+			$this->surrogateKeys[] =  $keyArr;
 		}
+	}
+
+	public function getSurrogateKeys() {
+		return $this->surrogateKeys;
 	}
 
 }

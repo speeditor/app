@@ -39,26 +39,6 @@ function wfOutputHandler( $s ) {
 		}
 	}
 
-	// Emit wiki surrogate key header
-	if ( $wgCityId ) {
-		$surrogateKey = Wikia::wikiSurrogateKey( $wgCityId );
-		if ( $surrogateKey ) {
-			// add mediawiki-specific key
-			$surrogateKeys = [$surrogateKey, $surrogateKey . '-mediawiki'];
-			// attach existing surrogate keys
-			$headers = headers_list();
-			foreach ( $headers as $header ) {
-				if ( substr( $header, 0, 14 ) == 'Surrogate-Key:' ) {
-					$surrogateKeys[] = trim( substr( $header, 14 ) );
-					break;
-				}
-			}
-			$surrogateKey = implode( ' ', $surrogateKeys);
-			header( 'Surrogate-Key: ' . $surrogateKey );
-			header( 'X-Surrogate-Key: ' . $surrogateKey );
-		}
-	}
-
 	return $s;
 }
 

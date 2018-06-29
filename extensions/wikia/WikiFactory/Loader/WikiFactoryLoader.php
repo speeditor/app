@@ -368,10 +368,6 @@ class WikiFactoryLoader {
 			}
 		}
 
-		// As soon as we've determined the wiki the current request belongs to, set the cityId in globals.
-		// This for example is needed in order to generate per-wiki surrogate keys during WFL redirects.
-		$wgCityId = $this->mWikiID;
-
 		/**
 		 * save default var values for Special:WikiFactory
 		 */
@@ -387,6 +383,7 @@ class WikiFactoryLoader {
 			$this->debug( "city_id={$this->mWikiID};city_public={$this->mIsWikiaActive}), redirected to {$this->mCityUrl}" );
 			header( "X-Redirected-By-WF: 2" );
 			header( "Location: {$this->mCityUrl}/", true, 301 );
+			$this->emitSurrogateKeyHeader();
 			wfProfileOut( __METHOD__ );
 			return false;
 		}
@@ -440,6 +437,7 @@ class WikiFactoryLoader {
 			} else {
 				header( 'Cache-Control: s-maxage=86400, must-revalidate, max-age=0' );
 			}
+			$this->emitSurrogateKeyHeader();
 
 			header( "Location: {$target}", true, 301 );
 			wfProfileOut( __METHOD__ );
@@ -460,6 +458,7 @@ class WikiFactoryLoader {
 					$this->debug( "disabled and not commandline, redirected to {$redirect}, {$this->mWikiID} {$this->mIsWikiaActive}" );
 					header( "X-Redirected-By-WF: Dump" );
 					header( "Location: $redirect" );
+					$this->emitSurrogateKeyHeader();
 
 					wfProfileOut( __METHOD__ );
 					return false;
@@ -639,6 +638,8 @@ class WikiFactoryLoader {
 			}
 		}
 
+		$wgCityId = $this->mWikiID;
+
 		/**
 		 * set/replace $wgDBname in $wgDBservers
 		 */
@@ -676,6 +677,15 @@ class WikiFactoryLoader {
 		 */
 		LBFactory::destroyInstance();
 		return $this->mWikiID;
+	}
+
+	public function emitSurrogateKeyHeader() {
+		$keys = Wikia::mediawikiSurrogateKeys( $this->mWikiID );
+		if ( !empty( $keys ) ) {
+			$surrogateKey = implode( ' ', $keys );
+			header( 'Surrogate-Key: ' . $surrogateKey );
+			header( 'X-Surrogate-Key: ' . $surrogateKey );
+		}
 	}
 
 	/**
