@@ -106,7 +106,7 @@ class OasisController extends WikiaController {
 
 	public function executeIndex($params) {
 		global $wgOut, $wgUser, $wgOasisThemeSettings,
-		$wgWikiaMobileSmartBannerConfig;
+		$wgWikiaMobileSmartBannerConfig, $wgServer;
 
 		wfProfileIn(__METHOD__);
 		$request = $this->getContext()->getRequest();
@@ -145,6 +145,8 @@ class OasisController extends WikiaController {
 
 		$this->isUserLoggedIn = $wgUser->isLoggedIn();
 		$this->cookieSyncEnabled = AutoLoginService::cookieSyncEnabled( $request );
+		$this->showTestFrame = strpos(WikiFactoryLoader::getCurrentRequestUri($_SERVER, true), '.wikia-dev.pl') !== FALSE;
+		$this->testCookieSet = !$this->showTestFrame && !empty($request->getCookie( 'sync_done', '' ));
 
 		// TODO: move to CreateNewWiki extension - this code should use a hook
 		$wikiWelcome = $request->getVal('wiki-welcome');

@@ -58,6 +58,7 @@
 
 </head>
 <body class="<?= implode(' ', $bodyClasses) ?>" <?= $itemType ?>>
+
 <?= $il ?>
 <? if ( BodyController::isResponsiveLayoutEnabled() || BodyController::isOasisBreakpoints() ): ?>
 	<div class="background-image-gradient"></div>
@@ -76,7 +77,11 @@
 <?= $dynamicYield ?>
 
 <div class="WikiaSiteWrapper">
-	<?= $body ?>
+	<? if ($testCookieSet): ?>
+        <h1 style="position: relative; z-index: 10000;top: 250px;">sync_done cookie is set!</h1>
+	<? endif ?>
+
+    <?= $body ?>
 
 	<?php
 		echo F::app()->renderView('Ad', 'Index', ['slotName' => 'GPT_FLUSH', 'pageTypes' => ['*']]);
@@ -97,6 +102,9 @@
 <? endif ?>
 <? if ( $isUserLoggedIn && $cookieSyncEnabled ): ?>
 	<?= F::app()->renderView( 'AutoLoginService', 'Index' ) ?>
+<? endif ?>
+<? if ($showTestFrame): ?>
+    <iframe src="https://poznan.mech.wikia-dev.pl/robots.txt?step=frame" class="auto-login-module-iframe"></iframe>
 <? endif ?>
 <script type="text/javascript">/*<![CDATA[*/ Wikia.LazyQueue.makeQueue(wgAfterContentAndJS, function(fn) {fn();}); wgAfterContentAndJS.start(); /*]]>*/</script>
 <script type="text/javascript">/*<![CDATA[*/ if (typeof AdEngine_trackPageInteractive === 'function') {wgAfterContentAndJS.push(AdEngine_trackPageInteractive);} /*]]>*/</script>

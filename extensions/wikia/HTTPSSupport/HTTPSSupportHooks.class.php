@@ -83,8 +83,8 @@ class HTTPSSupportHooks {
 		} elseif ( WebRequest::detectProtocol() === 'https' &&
 			!self::httpsAllowed( $user, $request->getFullRequestURL() )
 		) {
-			$output->redirectProtocol( PROTO_HTTP, 302, 'Robots-HTTP-downgrade' );
-			$output->enableClientCache( false );
+			//$output->redirectProtocol( PROTO_HTTP, 302, 'Robots-HTTP-downgrade' );
+			//$output->enableClientCache( false );
 		}
 		return true;
 	}
