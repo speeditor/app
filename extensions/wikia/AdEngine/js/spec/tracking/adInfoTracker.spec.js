@@ -33,6 +33,14 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 				return 'xyz=012';
 			}
 		},
+		trackingOptIn: {
+			isOptedIn: function () {
+				return true;
+			},
+			geoRequiresTrackingConsent: function () {
+				return true;
+			}
+		},
 		window: {
 			document: {
 				body: {
@@ -58,6 +66,7 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 			mocks.deviceDetect,
 			mocks.browserDetect,
 			mocks.log,
+			mocks.trackingOptIn,
 			mocks.window
 		);
 	}
@@ -107,7 +116,7 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 
 		var trackedData = mocks.adTracker.trackDW.calls.mostRecent().args[0];
 
-		expect(trackedData.kv_pos).toBe('FOO');
+		expect(trackedData.kv_pos).toBe('foo');
 		expect(trackedData.kv_rv).toBe('2');
 		expect(trackedData.kv_wsi).toBe('ofa1');
 		expect(trackedData.kv_abi).toBe('50_1');
@@ -121,7 +130,7 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 
 		var trackedData = mocks.adTracker.trackDW.calls.mostRecent().args[0];
 
-		expect(trackedData.kv_pos).toBe('FIRST');
+		expect(trackedData.kv_pos).toBe('first');
 	});
 
 	it('tracks single pos correctly ', function () {
@@ -132,7 +141,7 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 
 		var trackedData = mocks.adTracker.trackDW.calls.mostRecent().args[0];
 
-		expect(trackedData.kv_pos).toBe('ONLY_ONE');
+		expect(trackedData.kv_pos).toBe('only_one');
 	});
 
 	it('tracks undefined pos correctly', function () {
@@ -154,7 +163,7 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 
 		var trackedData = mocks.adTracker.trackDW.calls.mostRecent().args[0];
 
-		expect(trackedData.kv_pos).toBe('FIRST');
+		expect(trackedData.kv_pos).toBe('first');
 	});
 
 	it('handle case where input pos is not string', function () {
@@ -259,5 +268,14 @@ describe('ext.wikia.adEngine.tracking.adInfoTracker', function () {
 		var trackedData = mocks.adTracker.trackDW.calls.mostRecent().args[0];
 
 		expect(trackedData.product_chosen).toBe('chosen_product');
+	});
+
+	it('include opt-in consent information', function () {
+		spyOn(mocks.adTracker, 'trackDW');
+		getModule().track('FOO');
+
+		var trackedData = mocks.adTracker.trackDW.calls.mostRecent().args[0];
+
+		expect(trackedData.opt_in).toBe('yes');
 	});
 });

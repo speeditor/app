@@ -44,6 +44,7 @@ class WikiFactory {
 	# close Wiki
 	const HIDE_ACTION 			= -1;
 	const CLOSE_ACTION 			= 0;
+	const PUBLIC_WIKI			= 1;
 	static public $DUMP_SERVERS = [
 		'c1' => 'db2',
 		'c2' => 'db-sb2'
@@ -58,10 +59,9 @@ class WikiFactory {
 	const FLAG_REDIRECT              = 32;  // this wiki is a redirect - do not remove
 	const FLAG_PROTECTED             = 512; //wiki cannot be closed
 
-	const db            = "wikicities"; // @see $wgExternalSharedDB
-	const DOMAINCACHE   = "/tmp/wikifactory/domains.ser";
-	const CACHEDIR      = "/tmp/wikifactory/wikis";
-	const WIKIA_TOP_DOMAIN = '.wikia.com';
+	const db            	= "wikicities"; // @see $wgExternalSharedDB
+	const DOMAINCACHE   	= "/tmp/wikifactory/domains.ser";
+	const CACHEDIR      	= "/tmp/wikifactory/wikis";
 
 	// Community Central's city_id in wikicities.city_list.
 	const COMMUNITY_CENTRAL = 177;
@@ -496,14 +496,17 @@ class WikiFactory {
 	 * @return string
 	 */
 	static public function prepareUrlToParse( $url ) {
+		global $wgWikiaBaseDomain, $wgFandomBaseDomain;
 		$httpPrefix = 'http://';
 
 		if ( strpos( $url, $httpPrefix ) === false ) {
 			$url = $httpPrefix . $url;
 		}
 
-		if ( strpos( $url, static::WIKIA_TOP_DOMAIN ) === false ) {
-			$url = $url . static::WIKIA_TOP_DOMAIN;
+		if ( strpos( $url, '.' . $wgWikiaBaseDomain ) === false &&
+			strpos( $url, '.' . $wgFandomBaseDomain ) === false
+		) {
+			$url = $url . '.' . $wgWikiaBaseDomain;
 		}
 
 		return $url;
@@ -1241,15 +1244,17 @@ class WikiFactory {
 	 * @param $host
 	 * @return string normalized host name
 	 */
-	protected static function normalizeHost( $host ) {
+	public static function normalizeHost( $host ) {
 		global $wgDevDomain, $wgWikiaBaseDomain;
+		$baseDomain = wfGetBaseDomainForHost( $host );
+
 		// strip env-specific pre- and suffixes for staging environment
 		$host = preg_replace(
-			'/\.(stable|preview|verify|sandbox-[a-z0-9]+)\.' . preg_quote( $wgWikiaBaseDomain ) . '/',
-			static::WIKIA_TOP_DOMAIN,
+			'/\.(stable|preview|verify|sandbox-[a-z0-9]+)\.' . preg_quote( $baseDomain ) . '/',
+			".{$baseDomain}",
 			$host );
 		if ( !empty( $wgDevDomain ) ) {
-			$host = str_replace( ".{$wgDevDomain}", static::WIKIA_TOP_DOMAIN, $host );
+			$host = str_replace( ".{$wgDevDomain}", ".{$wgWikiaBaseDomain}", $host );
 		}
 		return $host;
 	}
@@ -1279,7 +1284,8 @@ class WikiFactory {
 	 * @throws \Exception
 	 */
 	static public function getLocalEnvURL( $url, $forcedEnv = null ) {
-		global $wgWikiaEnvironment, $wgWikiaBaseDomain, $wgDevDomain, $wgWikiaBaseDomainRegex;
+		global $wgWikiaEnvironment, $wgWikiaBaseDomain, $wgFandomBaseDomain,
+			$wgDevDomain, $wgWikiaBaseDomainRegex;
 
 		// first - normalize URL
 		$regexp = '/^(https?:)?\/\/([^\/]+)\/?(.*)?$/';
@@ -1298,9 +1304,11 @@ class WikiFactory {
 			$address = '/' . $address;
 		}
 
+		$baseDomain = wfGetBaseDomainForHost( $server );
+
 		$server = static::normalizeHost( $server );
-		$server = str_replace( static::WIKIA_TOP_DOMAIN, '', $server );
-		$server = str_replace( '.' . $wgWikiaBaseDomain, '', $server ); // PLATFORM-2400: make WF redirects work on staging
+		$server = str_replace( '.' . $wgWikiaBaseDomain, '', $server );
+		$server = str_replace( '.' . $wgFandomBaseDomain, '', $server );
 
 		// determine the environment we want to get url for
 		$environment = (
@@ -1314,16 +1322,16 @@ class WikiFactory {
 		// we do not have valid ssl certificate for these subdomains
 		switch ( $environment ) {
 			case WIKIA_ENV_PREVIEW:
-				return "$protocol//" . $server . '.preview' . static::WIKIA_TOP_DOMAIN . $address;
+				return "$protocol//" . $server . '.preview.' . $baseDomain . $address;
 			case WIKIA_ENV_VERIFY:
-				return "$protocol//" . $server . '.verify' . static::WIKIA_TOP_DOMAIN . $address;
+				return "$protocol//" . $server . '.verify.' . $baseDomain . $address;
 			case WIKIA_ENV_STABLE:
-				return "$protocol//" . $server . '.stable' . static::WIKIA_TOP_DOMAIN . $address;
+				return "$protocol//" . $server . '.stable.' . $baseDomain . $address;
 			case WIKIA_ENV_PROD:
-				return sprintf( '%s//%s.%s%s', $protocol, $server, $wgWikiaBaseDomain, $address );
+				return sprintf( '%s//%s.%s%s', $protocol, $server, $baseDomain, $address );
 			case WIKIA_ENV_SANDBOX:
-				return "$protocol//" . $server . '.' . static::getExternalHostName() .
-				       static::WIKIA_TOP_DOMAIN . $address;
+				return "$protocol//" . $server . '.' . static::getExternalHostName() . '.' .
+				       $baseDomain . $address;
 			case WIKIA_ENV_DEV:
 				return "$protocol//" . $server . '.' . $wgDevDomain . $address;
 		}
@@ -1691,7 +1699,7 @@ class WikiFactory {
 	 * @return boolean status
 	 */
 	static public function clearCache( $city_id ) {
-		global $wgMemc,$wgWikicitiesReadOnly;
+		global $wgWikicitiesReadOnly;
 
 		if ( ! static::isUsed() ) {
 			Wikia::log( __METHOD__, "", "WikiFactory is not used." );
@@ -1718,6 +1726,8 @@ class WikiFactory {
 			);
 		}
 
+		global $wgMemc;
+
 		/**
 		 * clear domains cache
 		 */
@@ -1726,8 +1736,7 @@ class WikiFactory {
 		/**
 		 * clear variables cache
 		 */
-		$wgMemc->delete( "WikiFactory::getCategory:" .
-		                 $city_id ); //ugly cat clearing (fb#9937)
+		$wgMemc->delete( "WikiFactory::getCategory:" . $city_id ); //ugly cat clearing (fb#9937)
 		$wgMemc->delete( static::getVarsKey( $city_id ) );
 
 		$city_dbname = static::IDtoDB( $city_id );
@@ -2425,6 +2434,34 @@ class WikiFactory {
 
 		wfProfileOut( __METHOD__ );
 		return $res;
+	}
+
+	/**
+	 * isInArchive
+	 *
+	 * Checks if a given wiki is already in archive db
+	 *
+	 * @param integer $cityId Wiki ID
+	 *
+	 * @return bool
+	 */
+	static public function isInArchive( $city_id ) {
+		global $wgExternalArchiveDB;
+
+		$wiki = WikiFactory::getWikiByID( $city_id );
+		if ( isset( $wiki->city_id ) ) {
+			$dba = wfGetDB( DB_MASTER, [], $wgExternalArchiveDB );
+			$sth = $dba->select(
+				[ 'city_domains' ],
+				[ '1' ],
+				[ 'city_id' => $city_id ],
+				__METHOD__
+			);
+
+			return $sth->numRows() > 0;
+		}
+
+		return false;
 	}
 
 	/**
@@ -3516,4 +3553,8 @@ class WikiFactory {
                         ]
                 );
         }
+
+	public static function clearVariablesCache() {
+		static::$variablesCache = [];
+	}
 };

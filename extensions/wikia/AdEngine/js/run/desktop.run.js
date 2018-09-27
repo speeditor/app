@@ -6,7 +6,8 @@ require([
 	'ext.wikia.adEngine.adEngineRunner',
 	'ext.wikia.adEngine.adLogicPageParams',
 	'ext.wikia.adEngine.adTracker',
-	'ext.wikia.adEngine.babDetection',
+	'ext.wikia.adEngine.context.slotsContext',
+	'ext.wikia.adEngine.lookup.bidders',
 	'ext.wikia.adEngine.slot.service.stateMonitor',
 	'ext.wikia.adEngine.config.desktop',
 	'ext.wikia.adEngine.customAdsLoader',
@@ -17,8 +18,12 @@ require([
 	'ext.wikia.adEngine.slotTracker',
 	'ext.wikia.adEngine.slotTweaker',
 	'ext.wikia.adEngine.tracking.adInfoListener',
+	'ext.wikia.adEngine.tracking.pageInfoTracker',
 	'ext.wikia.adEngine.tracking.scrollDepthTracker',
-	'wikia.geo',
+	'ext.wikia.adEngine.utils.adLogicZoneParams',
+	'ext.wikia.adEngine.wad.babDetection',
+	'ext.wikia.adEngine.wad.wadRecRunner',
+	'ext.wikia.adEngine.geo',
 	'wikia.trackingOptIn',
 	'wikia.window',
 	require.optional('wikia.articleVideo.featuredVideo.lagger')
@@ -28,7 +33,8 @@ require([
 	adEngineRunner,
 	pageLevelParams,
 	adTracker,
-	babDetection,
+	slotsContext,
+	bidders,
 	slotStateMonitor,
 	adConfigDesktop,
 	customAdsLoader,
@@ -39,7 +45,11 @@ require([
 	slotTracker,
 	slotTweaker,
 	adInfoListener,
+	pageInfoTracker,
 	scrollDepthTracker,
+	adLogicZoneParams,
+	babDetection,
+	wadRecRunner,
 	geo,
 	trackingOptIn,
 	win,
@@ -65,15 +75,23 @@ require([
 			slotRegistry,
 			null,
 			pageLevelParams.getPageLevelParams(),
+			adLogicZoneParams,
 			adContext,
 			btfBlocker,
 			'oasis',
-			trackingOptIn
+			trackingOptIn,
+			babDetection,
+			slotsContext
 		);
+
 		win.loadCustomAd = adEngineBridge.loadCustomAd(customAdsLoader.loadCustomAd);
 
 		if (context.opts.babDetectionDesktop) {
 			adEngineBridge.checkAdBlocking(babDetection);
+		}
+
+		if (bidders.isEnabled()) {
+			bidders.runBidding();
 		}
 
 		if (fvLagger && context.opts.isFVUapKeyValueEnabled) {
@@ -88,8 +106,16 @@ require([
 
 		// Everything starts after content and JS
 		win.wgAfterContentAndJS.push(function () {
+			wadRecRunner.init();
 			adInfoListener.run();
 			slotStateMonitor.run();
+
+			// Track Labrador values to DW
+			var labradorPropValue = geo.getSamplingResults().join(';');
+
+			if (context.opts.enableAdInfoLog && labradorPropValue) {
+				pageInfoTracker.trackProp('labrador', labradorPropValue);
+			}
 
 			// Ads
 			win.adslots2 = win.adslots2 || [];
@@ -110,6 +136,7 @@ require([
 	'ext.wikia.adEngine.slot.highImpact',
 	'ext.wikia.adEngine.slot.inContent',
 	'wikia.document',
+	'wikia.tracker',
 	'wikia.trackingOptIn',
 	'wikia.window'
 ], function (
@@ -119,6 +146,7 @@ require([
 	highImpact,
 	inContent,
 	doc,
+	tracker,
 	trackingOptIn,
 	win
 ) {
@@ -126,7 +154,16 @@ require([
 
 	function initDesktopSlots() {
 		highImpact.init();
-		inContent.init('INCONTENT_PLAYER');
+		if (adContext.get('opts.isIncontentPlayerDisabled')) {
+			tracker.track({
+				category: 'wgDisableIncontentPlayer',
+				trackingMethod: 'analytics',
+				action: tracker.ACTIONS.DISABLE,
+				label: true
+			});
+		} else {
+			inContent.init('INCONTENT_PLAYER');
+		}
 		bottomLeaderboard.init();
 	}
 

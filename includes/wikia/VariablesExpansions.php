@@ -221,6 +221,14 @@ $wgEditEventsRabbitConfig = [
 $wgExtensionsDirectory = "$IP/extensions";
 
 /**
+ * Celery monitoring tool URL.
+ * @see lib/Wikia/src/Tasks/Tasks/ImageReviewTask.php
+ * @see lib/Wikia/src/Tasks/TaskRunner.php
+ * @var string $wgFlowerUrl
+ */
+$wgFlowerUrl = "http://celery-flower.$wgWikiaDatacenter.k8s.wikia.net";
+
+/**
  * Localized central wikis.
  * @see extensions/wikia/WikiaLogo/WikiaLogoHelper.class.php
  * @var Array $wgLangToCentralMap

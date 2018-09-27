@@ -616,6 +616,7 @@ taking over the output.
 $out: OutputPage object
 &$redirect: URL, modifiable
 &$code: HTTP code (eg '301' or '302'), modifiable
+&$redirectedBy: list of features causing the redirect
 
 'BeforeParserFetchFileAndTitle': before an image is rendered by Parser
 $parser: Parser object
@@ -2197,13 +2198,6 @@ One, and only one hook should set this, and return false.
 &$tables: Database tables to use in the SELECT query
 &$opts: Options to use for the query
 &$join: Join conditions
-
-'wfShellMaintenanceCmd': Called when generating a shell-escaped command line
-	string to run a maintenance script.
-&$script: MediaWiki maintenance script path
-&$parameters: Array of arguments and options to the script
-&$options: Associative array of options, may contain the 'php' and 'wrapper'
-	keys
 
 'wgQueryPages': called when initialising $wgQueryPages, use this to add new
 query pages to be updated with maintenance/updateSpecialPages.php

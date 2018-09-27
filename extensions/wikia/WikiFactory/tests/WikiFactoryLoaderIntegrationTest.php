@@ -5,11 +5,15 @@
  */
 class WikiFactoryLoaderIntegrationTest extends WikiaDatabaseTest {
 
+	/** @var string $dbName */
+	private $dbName;
+
 	protected function setUp() {
 		parent::setUp();
 
 		WikiFactory::isUsed( false );
 		$GLOBALS['wgExtensionFunctions'] = [];
+		$this->dbName = $GLOBALS['wgDBname'];
 	}
 
 	/**
@@ -74,6 +78,10 @@ class WikiFactoryLoaderIntegrationTest extends WikiaDatabaseTest {
 			'REQUEST_SCHEME' => 'http',
 			'SERVER_NAME' => 'test1.wikia.com',
 			'REQUEST_URI' => 'http://test1.wikia.com/de/wiki/Bar',
+		] ];
+		yield [ 9, [
+			'HTTP_X_MW_WIKI_ID' => '9',  // this header takes precedence
+			'SERVER_NAME' => 'test1.wikia.com',
 		] ];
 	}
 
@@ -373,6 +381,8 @@ class WikiFactoryLoaderIntegrationTest extends WikiaDatabaseTest {
 		parent::tearDown();
 
 		WikiFactory::isUsed( true );
+		LBFactory::destroyInstance();
+		$GLOBALS['wgDBname'] = $this->dbName;
 	}
 
 	protected function getDataSet() {

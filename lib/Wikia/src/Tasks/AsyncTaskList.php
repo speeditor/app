@@ -17,12 +17,14 @@ use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPExceptionInterface;
 use Wikia\Logger\WikiaLogger;
+use Wikia\Tasks\Queues\DumpsOnDemandQueue;
 use Wikia\Tasks\Queues\ParsoidPurgePriorityQueue;
 use Wikia\Tasks\Queues\ParsoidPurgeQueue;
 use Wikia\Tasks\Queues\PriorityQueue;
 use Wikia\Tasks\Queues\PurgeQueue;
 use Wikia\Tasks\Queues\Queue;
 use Wikia\Tasks\Queues\SMWQueue;
+use Wikia\Tasks\Queues\ScheduledMaintenanceQueue;
 use Wikia\Tasks\Tasks\BaseTask;
 use Wikia\Tracer\WikiaTracer;
 
@@ -96,6 +98,9 @@ class AsyncTaskList {
 	 */
 	public function setQueue( $queue ) {
 		switch ( $queue ) {
+			case DumpsOnDemandQueue::NAME:
+				$queue = new DumpsOnDemandQueue();
+				break;
 			case PriorityQueue::NAME:
 				$queue = new PriorityQueue();
 				break;
@@ -110,6 +115,9 @@ class AsyncTaskList {
 				break;
 			case PurgeQueue::NAME:
 				$queue = new PurgeQueue();
+				break;
+			case ScheduledMaintenanceQueue::NAME:
+				$queue = new ScheduledMaintenanceQueue();
 				break;
 			default:
 				$queue = new Queue( $queue );
@@ -143,7 +151,7 @@ class AsyncTaskList {
 	/**
 	 * set this task list to run in a wiki's context
 	 *
-	 * @param int $wikiId
+	 * @param int|int[] $wikiId
 	 * @return $this
 	 */
 	public function wikiId( $wikiId ) {
@@ -252,34 +260,30 @@ class AsyncTaskList {
 	 * @return array
 	 */
 	protected function getExecutor() {
-		global $IP, $wgWikiaEnvironment, $wgDevDomain;
+		global $wgWikiaEnvironment, $wgDevDomain, $wgProcessTasksOnKubernetes;
 		$executor = [
 			'app' => self::EXECUTOR_APP_NAME,
 		];
 
+		// we want to use k8s on a percentage of all communities, so we need a global value for that percentage
+		$percentOfTasksOnKubernetes = \WikiFactory::getVarValueByName("wgPercentOfTasksOnKubernetes", static::DEFAULT_WIKI_ID );
+		
+		$shouldGoToKubernetes = $wgProcessTasksOnKubernetes
+			|| ( $percentOfTasksOnKubernetes && $this->wikiId % 100 < $percentOfTasksOnKubernetes );
+
 		if ( $wgWikiaEnvironment != WIKIA_ENV_PROD ) {
 			$host = wfGetEffectiveHostname();
-			$executionMethod = 'http';
 
 			if ( $wgWikiaEnvironment == WIKIA_ENV_DEV && preg_match( '/^dev-(.*?)$/', $host ) ) {
-				$executionRunner = ["http://tasks.{$wgDevDomain}/proxy.php"];
+				$executor['runner'] = ["http://tasks.{$wgDevDomain}/proxy.php"];
 			} elseif ($wgWikiaEnvironment == WIKIA_ENV_SANDBOX) {
-				$executionRunner = ["http://community.{$host}.wikia.com/extensions/wikia/Tasks/proxy/proxy.php"];
+				$executor['runner'] = ["http://community.{$host}.wikia.com/extensions/wikia/Tasks/proxy/proxy.php"];
 			} elseif (in_array($wgWikiaEnvironment, [WIKIA_ENV_PREVIEW, WIKIA_ENV_VERIFY])) {
-				$executionRunner = ["http://community.{$wgWikiaEnvironment}.wikia.com/extensions/wikia/Tasks/proxy/proxy.php"];
-			} else { // in other environments or when apache isn't available, ssh into this exact node to execute
-				wfDebug( __METHOD__ . " - fallback to remote_shell execution mode on {$host}!\n" );
-
-				$executionMethod = 'remote_shell';
-				$executionRunner = [
-					$host,
-					'php',
-					realpath( $IP . '/maintenance/wikia/task_runner.php' ),
-				];
+				$executor['runner'] = ["http://community.{$wgWikiaEnvironment}.wikia.com/extensions/wikia/Tasks/proxy/proxy.php"];
 			}
-
-			$executor['method'] = $executionMethod;
-			$executor['runner'] = $executionRunner;
+		} elseif ( $shouldGoToKubernetes ) {
+			# SUS-5562 use k8s to process task
+			$executor['runner'] = ["http://mediawiki-tasks/proxy.php"];
 		}
 
 		return $executor;
@@ -350,16 +354,13 @@ class AsyncTaskList {
 				$channel->confirm_select();
 				$channel->basic_publish( $message, '', $this->getQueue()->name() );
 				$channel->wait_for_pending_acks(self::ACK_WAIT_TIMEOUT_SECONDS);
+
+				$channel->close();
+				$connection->close();
 			} catch ( AMQPExceptionInterface $e ) {
 				$exception = $e;
-			}
-
-			if ( $channel !== null ) {
-				$channel->close();
-			}
-
-			if ( $connection !== null ) {
-				$connection->close();
+			} catch ( \ErrorException $e ) {
+				$exception = $e;
 			}
 
 			if ( $exception !== null ) {
@@ -452,17 +453,17 @@ class AsyncTaskList {
 
 		try {
 			$connection = self::getConnection();
+			$channel = $connection->channel();
+
+			// Allow basic_publish to fail in case the connection is blocked by rabbit, due to insufficient resources.
+			// https://www.rabbitmq.com/alarms.html
+			$channel->confirm_select();
 		} catch ( AMQPExceptionInterface $e ) {
+			return $logError( $e );
+		} catch ( \ErrorException $e ) {
 			return $logError( $e );
 		}
 
-		$channel = $connection->channel();
-		/*
-		 * Allow basic_publish to fail in case the connection is blocked by rabbit, due to insufficient resources.
-		 * https://www.rabbitmq.com/alarms.html
-		 */
-		$channel->confirm_select();
-		$exception = null;
 		$ids = [];
 
 		foreach ( $taskLists as $task ) {
@@ -474,11 +475,9 @@ class AsyncTaskList {
 			$channel->publish_batch();
 			$channel->wait_for_pending_acks(self::ACK_WAIT_TIMEOUT_SECONDS);
 		} catch ( AMQPExceptionInterface $e ) {
-			$exception = $e;
-		}
-
-		if ( $exception !== null ) {
-			return $logError( $exception );
+			return $logError( $e );
+		} catch ( \ErrorException $e ) {
+			return $logError( $e );
 		}
 
 		return $ids;

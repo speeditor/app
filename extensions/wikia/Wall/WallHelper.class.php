@@ -61,15 +61,10 @@ class WallHelper {
 	/**
 	 * @brief Gets and returns user's object.
 	 *
-	 * @desc !IMPORTANT! It requires UserProfilePage class from UserProfilePageV3 extension.
-	 * It sends request to UserProfilePage controller which should return user object generated
-	 * from passed title.
-	 *
 	 * @return User
 	 *
 	 * @author Andrzej 'nAndy' Łukaszewski
 	 */
-	// TODO: remove call to UserProfilePage
 	public function getUser() {
 		$title = F::app()->wg->Title;
 		$ns = $title->getNamespace();
@@ -478,17 +473,18 @@ class WallHelper {
 	/**
 	 * Create a new Wall Notification from revision info, and dispatch it to wall_notifications table.
 	 *
+	 * @param WallMessage $wallMessage
 	 * @param Revision $rev
 	 * @param int $rcType whether this is a new thread/reply (RC_NEW = 1) or edit to existing one/wall action (RC_EDIT = 2)
 	 * @param User $user
 	 */
-	public static function sendNotification( Revision $rev, int $rcType, User $user ) {
+	public static function sendNotification( WallMessage $wallMessage, Revision $rev, int $rcType, User $user ) {
 		// SUS-3281: No point in creating notification for anons
 		if ( $user->isAnon() ) {
 			return;
 		}
 
-		$notif = WallNotificationEntity::createFromRev( $rev );
+		$notif = WallNotificationEntity::newFromRevisionAndMessage( $rev, $wallMessage );
 		$wh = new WallHistory();
 
 		$wh->add( $rcType == RC_NEW ? WH_NEW : WH_EDIT, $notif, $user );

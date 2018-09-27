@@ -3,16 +3,6 @@
 #  Overwrite some variables, load extensions, etc. Former CustomSettings.php  #
 ###############################################################################
 
-###############################################################################
-# DC specific settings                                                        #
-###############################################################################
-switch ($wgWikiaDatacenter) {
-	case "res":
-		# PLATFORM-1740: disable task queue in Reston, it was calling SJC broker
-		$wgTaskBroker = false;
-		break;
-}
-
 // TODO: Clean up after CK editor as default test is finished
 if (isset( $wgCityId ) && is_numeric($wgCityId) ) {
 	if ( in_array( intval( $wgCityId ), $wgCKEdefaultEditorTestWikis ) ) {
@@ -131,8 +121,6 @@ if ( ! empty( $wgEnableLyricWikiExt ) ) {
 	require_once "$LW/Hook_PreventBlanking.php";
 	require_once "$LW/Special_ArtistRedirects.php";
 	require_once "$LW/lw_spiderableBadArtists.php";
-	require_once "$LW/Special_Soapfailures.php";
-	require_once "$LW/Special_MobileSearches.php";
 	require_once "$LW/lw_impliedRedirects.php";
 	# Turn off subpages on the main namespace (otherwise every AC/DC song links back to "AC"), etc.
 	$wgNamespacesWithSubpages[ NS_MAIN ] = false;
@@ -140,10 +128,11 @@ if ( ! empty( $wgEnableLyricWikiExt ) ) {
 	require_once "$LW/LyricFind/LyricFind.setup.php";
 }
 /**
- * enable welcome tool on specified languages
+ * WgEnableHAWelcomeExt is enabled by default
+ * Disable welcome tool if there is no available language
  */
-if( in_array( $wgLanguageCode, $wgAvailableHAWLang ) && !isset($wgEnableHAWelcomeExt) ) {
-	$wgEnableHAWelcomeExt = true;
+if ( !in_array( $wgLanguageCode, $wgAvailableHAWLang ) ) {
+	$wgEnableHAWelcomeExt = false;
 }
 
 if ( $wgEnableInsightsExt === null && in_array( $wgLanguageCode, $wgAvailableInsightsLang ) ) {
@@ -420,7 +409,14 @@ if ( defined( 'REBUILD_LOCALISATION_CACHE_IN_PROGRESS' ) || !empty($wgEnableSema
 
 if ( !empty( $wgEnableScribuntoExt ) ) {
 	include "$IP/extensions/Scribunto/Scribunto.php";
-	$wgScribuntoDefaultEngine = 'luastandalone'; # PLATFORM-1885
+	
+	// SUS-5540: use the luasandbox extension as executor if it is available
+	if ( extension_loaded( 'luasandbox' ) ) {
+		$wgScribuntoDefaultEngine = 'luasandbox';
+	} else {
+		$wgScribuntoDefaultEngine = 'luastandalone'; # PLATFORM-1885
+	}
+
 	$wgScribuntoUseGeSHi = $wgEnableSyntaxHighlightGeSHiExt;
 	$wgWysiwygDisabledNamespaces[] = NS_MODULE;
 
@@ -543,10 +539,6 @@ if( !empty( $wgEnableRandomSelectionExt ) ) {
 	include( "$IP/extensions/3rdparty/RandomSelection/RandomSelection.php" );
 }
 
-if( !empty( $wgEnableTaskManagerExt ) ) {
-	include( "$IP/extensions/wikia/TaskManager/SpecialTaskManager.php" );
-}
-
 if( !empty( $wgEnableMultiDeleteExt ) ) {
 	include( "$IP/extensions/wikia/MultiTasks/SpecialMultiDelete.php" );
 	include( "$IP/extensions/wikia/MultiTasks/SpecialMultiWikiFinder.php" );
@@ -613,11 +605,6 @@ if ( !empty( $wgEnableLookupContribsExt ) || !empty( $wgEnableUserActivityExt ) 
 // Only load the LookupUser extention when specifically enabled
 if ( !empty( $wgEnableLookupContribsExt ) ) {
 	include( "$IP/extensions/wikia/LookupUser/LookupUser.php" );
-}
-
-if( !empty( $wgEnableTorBlockExt ) ) {
-	include( "$IP/extensions/TorBlock/TorBlock.php" );
-	$wgTorIPs = [];
 }
 
 if( !empty( $wgEnableWhereIsExtensionExt ) ) {
@@ -983,7 +970,7 @@ if ( !empty( $wgEnableTitleBlacklistExt ) ) {
 }
 
 # User Rename Tool
-if (!empty($wgEnableUserRenameToolExt) && !empty($wgEnableTaskManagerExt) && !empty($wgEnablePhalanxExt)) {
+if (!empty($wgEnableUserRenameToolExt) && !empty($wgEnablePhalanxExt)) {
 	include("$IP/extensions/wikia/UserRenameTool/SpecialRenameuser.php");
 } else {
 	# Add log type for user rename even when rename extanesion is not enabled
@@ -1685,10 +1672,6 @@ if ( !empty( $wgEnableRobotsTxtExt ) ) {
 	include( "$IP/extensions/wikia/RobotsTxt/RobotsTxt.setup.php" );
 }
 
-if ( !empty( $wgEnableSeoLinkHreflangExt ) ) {
-	include "$IP/extensions/wikia/SeoLinkHreflang/SeoLinkHreflang.setup.php";
-}
-
 if ( !empty( $wgEnableSitemapPageExt ) ) {
 	include( "$IP/extensions/wikia/SitemapPage/SitemapPage.setup.php" );
 }
@@ -1764,3 +1747,14 @@ include "$IP/extensions/wikia/DownloadYourData/DownloadYourData.setup.php";
 include "$IP/extensions/wikia/Privacy/Privacy.setup.php";
 
 include "$IP/extensions/wikia/Announcements/Announcements.setup.php";
+
+// SUS-5473 | Expose a button on Special:Statistics allowing Wikia Staff members to schedule
+// updateSpecialPages.php maintenance script run.
+include "$IP/extensions/wikia/UpdateSpecialPagesScheduler/UpdateSpecialPagesScheduler.setup.php";
+
+// PLATFORM-3558 |
+include "$IP/extensions/wikia/AutoLogin/AutoLogin.setup.php";
+
+if ( !empty( $wgEnableFeedsAndPostsExt ) ) {
+	include "$IP/extensions/wikia/FeedsAndPosts/FeedsAndPosts.setup.php";
+}

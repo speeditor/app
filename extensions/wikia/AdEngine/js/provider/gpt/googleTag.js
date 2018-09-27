@@ -1,7 +1,7 @@
 /*global define*/
 /*jshint maxlen:125, camelcase:false, maxdepth:7*/
 define('ext.wikia.adEngine.provider.gpt.googleTag', [
-	'ext.wikia.adEngine.bridge',
+	'ext.wikia.adEngine',
 	'ext.wikia.adEngine.provider.gpt.googleSlots',
 	'ext.wikia.adEngine.slot.adSlot',
 	'ext.wikia.adEngine.slot.service.slotRegistry',
@@ -10,7 +10,7 @@ define('ext.wikia.adEngine.provider.gpt.googleTag', [
 	'wikia.log',
 	'wikia.trackingOptIn',
 	'wikia.window'
-], function (bridge, googleSlots, adSlot, slotRegistry, srcProvider, doc, log, trackingOptIn, win) {
+], function (adEngine3, googleSlots, adSlot, slotRegistry, srcProvider, doc, log, trackingOptIn, win) {
 	'use strict';
 
 	var logGroup = 'ext.wikia.adEngine.provider.gpt.googleTag',
@@ -22,9 +22,9 @@ define('ext.wikia.adEngine.provider.gpt.googleTag', [
 	win.googletag.cmd = win.googletag.cmd || [];
 
 	function collapseIfSlotHasViewportConflicts(slotName) {
-		var slot = bridge.slotService.get(slotName);
+		var slot = adEngine3.slotService.get(slotName);
 
-		if (bridge.slotService.hasViewportConflict(slot)) {
+		if (adEngine3.slotService.hasViewportConflict(slot)) {
 			slot.collapse({ adType: 'viewport-conflict' });
 
 			return true;
@@ -145,16 +145,6 @@ define('ext.wikia.adEngine.provider.gpt.googleTag', [
 		});
 	}
 
-	function updateTargetingForBlockedTraffic() {
-		win.googletag.pubads().getSlots().forEach(function (slot) {
-			// slot.clearTargeting described in docs is not applicable in this context
-			if (slot.targeting) {
-				slot.targeting.src = [];
-			}
-			slot.setTargeting('src', srcProvider.getRecoverySrc());
-		});
-	}
-
 	function addSlot(adElement) {
 		var defaultSizes = adElement.getDefaultSizes(),
 			sizeMap = adElement.getSizes(),
@@ -236,7 +226,7 @@ define('ext.wikia.adEngine.provider.gpt.googleTag', [
 				} else {
 					if (slotsNames.indexOf(slotsPositionTargeting[0]) > -1) {
 						slotsToDestroy.push(slot);
-						bridge.slotService.clearSlot(slotsPositionTargeting[0]);
+						adEngine3.slotService.clearSlot(slotsPositionTargeting[0]);
 					}
 				}
 			});
@@ -267,7 +257,6 @@ define('ext.wikia.adEngine.provider.gpt.googleTag', [
 	return {
 		addSlot: addSlot,
 		destroySlots: destroySlots,
-		updateTargetingForBlockedTraffic: updateTargetingForBlockedTraffic,
 		flush: flush,
 		init: init,
 		isInitialized: isInitialized,

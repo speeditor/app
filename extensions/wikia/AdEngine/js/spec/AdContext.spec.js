@@ -7,46 +7,23 @@ describe('AdContext', function () {
 		return;
 	}
 
-	function isProperGeo(countryList) {
-		if (!countryList) {
-			return false;
-		}
-		if (countryList.indexOf('CURRENT_COUNTRY') > -1) {
-			return true;
-		}
-		if (countryList.indexOf('CURRENT_COUNTRY-CURRENT_REGION') > -1) {
-			return true;
-		}
-		if (countryList.indexOf('XX-CURRENT_CONTINENT') > -1) {
-			return true;
-		}
-		if (countryList.indexOf('XX') > -1) { //global
-			return true;
-		}
-		return false;
-	}
-
-	var geo = {
-		getCountryCode: function () {
-			return 'CURRENT_COUNTRY';
-		},
-		getRegionCode: function () {
-			return 'CURRENT_REGION';
-		},
-		getContinentCode: function () {
-			return 'CURRENT_CONTINENT';
-		},
-		isProperGeo: isProperGeo
-	};
-
 	var mocks = {
 			browserDetect: {
 				isEdge: function() {
 					return false;
+				},
+				isChrome: function() {
+					return false;
+				},
+				getBrowserVersion: function() {
+					return 100;
 				}
 			},
-			adsGeo: geo,
-			geo: geo,
+			geo: {
+				mapSamplingResults: function() {
+					return [];
+				}
+			},
 			instantGlobals: {},
 			win: {},
 			Querystring: function () {
@@ -55,9 +32,7 @@ describe('AdContext', function () {
 			querystring: {
 				getVal: noop
 			},
-			wikiaCookies: {
-				get: noop
-			},
+			wikiaCookies: {},
 			sampler: {
 				sample: function () {
 					return false;
@@ -66,7 +41,6 @@ describe('AdContext', function () {
 			callback: noop
 		},
 		queryParams = [
-			'evolve2',
 			'turtle'
 		];
 
@@ -74,22 +48,31 @@ describe('AdContext', function () {
 		return modules['ext.wikia.adEngine.adContext'](
 			mocks.browserDetect,
 			mocks.wikiaCookies,
-			mocks.doc,
-			mocks.geo,
 			mocks.instantGlobals,
-			mocks.adsGeo,
+			mocks.geo,
 			mocks.sampler,
 			mocks.win,
 			mocks.Querystring
 		);
 	}
 
+	function fakeIsProperGeo(geos) {
+		geos = geos || [];
+		return geos.indexOf('CURRENT_COUNTRY') !== -1;
+	}
+
 	beforeEach(function () {
+		var geoAPI = [
+			'isProperGeo', 'getCountryCode', 'getRegionCode', 'getContinentCode', 'isProperGeo',
+			'getSamplingResults', 'mapSamplingResults'
+		];
+		mocks.geo = jasmine.createSpyObj('geo', geoAPI);
+		mocks.wikiaCookies = jasmine.createSpyObj('cookies', ['get']);
+
+		mocks.geo.isProperGeo.and.callFake(fakeIsProperGeo);
+		mocks.geo.getSamplingResults.and.returnValue(['wgAdDriverRubiconDfpCountries_A_50']);
+		mocks.geo.mapSamplingResults.and.returnValue('rub-dfp-test');
 		mocks.instantGlobals = {};
-		getModule().getContext().opts = {};
-		if (mocks.doc && mocks.doc.hasOwnProperty('referrer')) {
-			mocks.doc.referrer = '';
-		}
 	});
 
 	it(
@@ -135,27 +118,6 @@ describe('AdContext', function () {
 		expect(adContext.getContext().targeting.yyy).toBe(true);
 		expect(adContext.getContext().providers.someProvider).toBe(true);
 		expect(adContext.getContext().providers.someProviderProperty).toBe(7);
-	});
-
-	it('makes opts.showAds false for sony tvs', function () {
-		var adContext;
-
-		mocks.win = {
-			ads: {
-				context: {
-					opts: {
-						showAds: true
-					}
-				}
-			}
-		};
-
-		mocks.doc = {
-			referrer: 'info.tvsideview.sony.net'
-		};
-
-		adContext = getModule();
-		expect(adContext.getContext().opts.showAds).toBeFalsy();
 	});
 
 	it('makes targeting.pageCategories filled with categories properly', function () {
@@ -235,7 +197,7 @@ describe('AdContext', function () {
 		expect(adContext.getContext().targeting.pageCategories).toEqual([]);
 	});
 
-	it('makes targeting.enableKruxTargeting false when disaster recovery instant global variable is set to true',
+	it('makes targeting.enableKruxTargeting false when disaster rec instant global variable is set to true',
 		function () {
 			var adContext;
 			mocks.win = {ads: {context: {targeting: {enableKruxTargeting: true}}}};
@@ -387,78 +349,15 @@ describe('AdContext', function () {
 		expect(getModule().getContext().opts.babDetectionMobile).toBeFalsy();
 	});
 
-	it('enable recovery behind BlockAdBlock detection for current country on whitelist', function () {
-		spyOn(mocks.sampler, 'sample').and.callFake(function () {
-			return true;
-		});
-		mocks.instantGlobals = {wgAdDriverBabRecoveryCountries: ['CURRENT_COUNTRY', 'ZZ']};
-		expect(getModule().getContext().opts.babRecovery).toBeTruthy();
-	});
-
-	it('disable recovery behind BlockAdBlock detection when current country is not on whitelist', function () {
-		spyOn(mocks.sampler, 'sample').and.callFake(function () {
-			return true;
-		});
-		mocks.instantGlobals = {wgAdDriverBabRecoveryCountries: ['OTHER_COUNTRY', 'ZZ']};
-		expect(getModule().getContext().opts.babRecovery).toBeFalsy();
-	});
-
 	it('showcase is enabled if the cookie is set', function () {
-		mocks.wikiaCookies = {
-			get: function () {
-				return 'NlfdjR5xC0';
-			}
-		};
-
+		mocks.wikiaCookies.get.and.returnValue('NlfdjR5xC0');
 		expect(getModule().getContext().opts.showcase).toBeTruthy();
 	});
 
 	it('showcase is disabled if cookie is not set', function () {
-		mocks.wikiaCookies = {
-			get: function () {
-				return false;
-			}
-		};
-
+		mocks.win.ads.context = {};
+		mocks.wikiaCookies.get.and.returnValue(false);
 		expect(getModule().getContext().opts.showcase).toBeFalsy();
-	});
-
-	it('enables evolve2 provider when country in instantGlobals.wgAdDriverEvolve2Countries', function () {
-		var adContext;
-		mocks.win = {
-			ads: {
-				context: {
-					providers: {
-						evolve2: true
-					}
-				}
-			}
-		};
-
-		mocks.instantGlobals = {wgAdDriverEvolve2Countries: ['HH', 'CURRENT_COUNTRY', 'ZZ']};
-		adContext = getModule();
-		expect(adContext.getContext().providers.evolve2).toBeTruthy();
-
-		mocks.instantGlobals = {wgAdDriverEvolve2Countries: ['YY']};
-		adContext = getModule();
-		expect(adContext.getContext().providers.evolve2).toBeFalsy();
-	});
-
-	it('disables evolve2 provider when provider is disabled by wg var', function () {
-		var adContext;
-		mocks.win = {
-			ads: {
-				context: {
-					providers: {
-						evolve2: false
-					}
-				}
-			}
-		};
-
-		mocks.instantGlobals = {wgAdDriverEvolve2Countries: ['HH', 'CURRENT_COUNTRY', 'ZZ']};
-		adContext = getModule();
-		expect(adContext.getContext().providers.evolve2).toBeFalsy();
 	});
 
 	it('enables FAN provider when provider is enabled by wg var', function () {
@@ -600,7 +499,7 @@ describe('AdContext', function () {
 				wgAdDriverAppNexusAstBidderCountries: ['CURRENT_COUNTRY']
 			},
 			testedBidder: 'appnexusAst',
-			expectedResult: false
+			expectedResult: true
 		},
 		{
 			hasFeaturedVideo: false,
@@ -722,5 +621,16 @@ describe('AdContext', function () {
 		expect(getModule().get('..')).toBeUndefined();
 		expect(getModule().get('..')).toBeUndefined();
 		expect(getModule().get('opts..showAds')).toBeUndefined();
+	});
+
+	it('checks which lABrador keyvals should be sent to DFP', function () {
+		mocks.instantGlobals = {
+			wgAdDriverRubiconDfpCountries: ['XX/50'],
+			wgAdDriverLABradorDfpKeyvals: ['wgAdDriverRubiconDfpCountries_A_50:rub-dfp-test']
+		};
+
+		getModule();
+
+		expect(getModule().get('opts.labradorDfp')).toEqual('rub-dfp-test');
 	});
 });

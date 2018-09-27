@@ -2,8 +2,9 @@
 define('ext.wikia.adEngine.lookup.prebid.adapters.appnexusAst', [
 	'ext.wikia.adEngine.adContext',
 	'ext.wikia.adEngine.context.slotsContext',
+	'ext.wikia.adEngine.wad.babDetection',
 	'wikia.location'
-], function (adContext, slotsContext, loc) {
+], function (adContext, slotsContext, babDetection, loc) {
 	'use strict';
 
 	var bidderName = 'appnexusAst',
@@ -13,11 +14,17 @@ define('ext.wikia.adEngine.lookup.prebid.adapters.appnexusAst', [
 		debugPlacementId = '5768085',
 		slots = {
 			oasis: {
+				FEATURED: {
+					placementId: '13684967'
+				},
 				INCONTENT_PLAYER: {
 					placementId: '11543172'
 				}
 			},
 			mercury: {
+				FEATURED: {
+					placementId: '13705871'
+				},
 				MOBILE_IN_CONTENT: {
 					placementId: '11543173'
 				}
@@ -25,7 +32,7 @@ define('ext.wikia.adEngine.lookup.prebid.adapters.appnexusAst', [
 		};
 
 	function isEnabled() {
-		return adContext.get('bidders.appnexusAst');
+		return adContext.get('bidders.appnexusAst') && !babDetection.isBlocking();
 	}
 
 	function prepareAdUnit(slotName, config) {
@@ -35,7 +42,7 @@ define('ext.wikia.adEngine.lookup.prebid.adapters.appnexusAst', [
 			code: slotName,
 			mediaTypes: {
 				video: {
-					context: 'outstream',
+					context: 'instream',
 					playerSize: [640, 480]
 				}
 			},

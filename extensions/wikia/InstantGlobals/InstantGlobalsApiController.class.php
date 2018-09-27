@@ -1,11 +1,23 @@
 <?php
 
 class InstantGlobalsApiController extends WikiaController {
+
+	const NEWS_AND_STORIES_HOOK = 'InstantGlobalsGetNewsAndStoriesVariables';
+	const FANDOM_CREATOR_HOOK = 'InstantGlobalsGetFandomCreatorVariables';
+
 	/**
 	 * @return array
 	 */
 	public function getNewsAndStoriesVariables() {
-		$instantGlobals = $this->getNewsAndStoriesVariablesValues();
+		$instantGlobals = $this->getInstantGlobals(self::NEWS_AND_STORIES_HOOK);
+
+		$this->response->setFormat( WikiaResponse::FORMAT_JSON );
+		$this->response->setCacheValidity( WikiaResponse::CACHE_VERY_SHORT );
+		$this->response->setData( $instantGlobals );
+	}
+
+	public function getFandomCreatorVariables() {
+		$instantGlobals = $this->getInstantGlobals(self::FANDOM_CREATOR_HOOK);
 
 		$this->response->setFormat( WikiaResponse::FORMAT_JSON );
 		$this->response->setCacheValidity( WikiaResponse::CACHE_VERY_SHORT );
@@ -13,28 +25,15 @@ class InstantGlobalsApiController extends WikiaController {
 	}
 
 	/**
-	 * Get news&stories tracking opt-outs values
+	 * Get variables values
 	 *
-	 * @return array
+	 * @return array key / value list variables
 	 */
-	public function getNewsAndStoriesTrackingOptOut() {
-		$trackingOptOut = AdEngine2Hooks::getTrackingOptOutModules();
-
-		$this->response->setFormat( WikiaResponse::FORMAT_JSON );
-		$this->response->setCacheValidity( WikiaResponse::CACHE_VERY_SHORT );
-		$this->response->setData( $trackingOptOut );
-	}
-
-	/**
-	 * Get news&stories variables values
-	 *
-	 * @return object key / value list variables
-	 */
-	private function getNewsAndStoriesVariablesValues() {
+	private function getInstantGlobals(string $hookName) {
 		$ret = [];
 		$variables = [];
 
-		Hooks::run( 'InstantGlobalsGetNewsAndStoriesVariables', [&$variables] );
+		Hooks::run( $hookName, [&$variables] );
 
 		foreach ( $variables as $name ) {
 			$value = WikiFactory::getVarValueByName( $name, Wikia::COMMUNITY_WIKI_ID );

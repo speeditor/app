@@ -47,7 +47,7 @@ class SetupWikiCities extends Task {
 	}
 
 	public function addToCityList() {
-		global $wgRequest, $wgCreateDatabaseActiveCluster;
+		global $wgCreateDatabaseActiveCluster, $wgWikiaBaseDomain, $wgFandomBaseDomain;
 		$founder = $this->taskContext->getFounder();
 
 		$insertFields = [
@@ -56,7 +56,7 @@ class SetupWikiCities extends Task {
 			'city_url' => $this->taskContext->getURL(),
 			'city_founding_user' => $founder->getId(),
 			'city_founding_email' => $founder->getEmail(),
-			'city_founding_ip_bin' => inet_pton( $wgRequest->getIP() ),
+			'city_founding_ip_bin' => inet_pton( $this->taskContext->getIP() ),
 			'city_path' => self::DEFAULT_SLOT,
 			'city_description' => $this->taskContext->getSiteName(),
 			'city_lang' => $this->taskContext->getLanguage(),
@@ -70,18 +70,31 @@ class SetupWikiCities extends Task {
 	}
 
 	public function addToCityDomains() {
-		return $this->taskContext->getSharedDBW()->insert(
-			"city_domains",
+		global $wgFandomBaseDomain, $wgWikiaBaseDomain;
+		$host = parse_url( $this->taskContext->getURL(), PHP_URL_HOST );
+		$domains = [
 			[
-				[
-					'city_id' => $this->taskContext->getCityId(),
-					'city_domain' => $this->taskContext->getDomain()
-				], [
+				'city_id' => $this->taskContext->getCityId(),
+				'city_domain' => $this->taskContext->getDomain()
+			]
+		];
+		if ( wfGetBaseDomainForHost( $host ) === $wgFandomBaseDomain ) {
+			// for fandom.com wiki, create a secondary wikia.com domain for redirects
+			$wikiaDomain = str_replace( '.' . $wgFandomBaseDomain,
+				'.' . $wgWikiaBaseDomain,
+				$this->taskContext->getDomain() );
+			$domains[] = [
+				'city_id' => $this->taskContext->getCityId(),
+				'city_domain' => $wikiaDomain
+			];
+		} else {
+			// legacy www. subdomain for wikia.com wikis
+			$domains[] = [
 				'city_id' => $this->taskContext->getCityId(),
 				'city_domain' => sprintf( "www.%s", $this->taskContext->getDomain() )
-			]
-			],
-			__METHOD__
-		);
+			];
+		}
+
+		return $this->taskContext->getSharedDBW()->insert( "city_domains", $domains, __METHOD__ );
 	}
 }

@@ -13,6 +13,8 @@ class HTTPSSupportHooks {
 		'wikia' => [ 'Community_Central:Licensing' ]
 	];
 
+	const VIGNETTE_IMAGES_HTTP_UPGRADABLE = '#(images|img|static|vignette)(\d+)?\.wikia\.(nocookie\.)?(net|com)#i';
+
 	public static function onMercuryWikiVariables( array &$wikiVariables ): bool {
 		global $wgDisableHTTPSDowngrade;
 		$basePath = $wikiVariables['basePath'];
@@ -41,31 +43,98 @@ class HTTPSSupportHooks {
 		User $user, WebRequest $request, MediaWiki $mediawiki
 	): bool {
 		global $wgDisableHTTPSDowngrade;
-		if ( !empty( $_SERVER['HTTP_FASTLY_FF'] ) ) {  // don't redirect internal clients
+		if ( !empty( $_SERVER['HTTP_FASTLY_FF'] ) &&  // don't redirect internal clients
+			// Don't redirect externaltest and showcase due to weird redirect behaviour (PLATFORM-3585)
+			!in_array( $request->getHeader( 'X-Staging' ), [ 'externaltest', 'showcase' ] )
+		) {
 			$requestURL = $request->getFullRequestURL();
 			if ( WebRequest::detectProtocol() === 'http' &&
 				self::httpsAllowed( $user, $requestURL )
 			) {
-				$output->redirect( wfHttpToHttps( $requestURL ) );
+				$output->redirectProtocol( PROTO_HTTPS, '301', 'HTTPS-Upgrade' );
+				if ( $user->isAnon() ) {
+					$output->enableClientCache( false );
+				}
 			} elseif ( WebRequest::detectProtocol() === 'https' &&
 				!self::httpsAllowed( $user, $requestURL ) &&
-				empty( $wgDisableHTTPSDowngrade ) &&
-				!$request->getHeader( 'X-Wikia-WikiaAppsID' ) &&
-				!self::httpsEnabledTitle( $title )
+				self::shouldDowngradeRequest( $title, $request )
 			) {
-				$output->redirect( wfHttpsToHttp( $requestURL ) );
+				$output->redirectProtocol( PROTO_HTTP, 302, 'HTTPS-Downgrade' );
+				$output->enableClientCache( false );
 			}
 		}
 		return true;
 	}
 
+	/**
+	 * Handle downgrading anonymous requests for our robots.txt.
+	 *
+	 * @param  WebRequest $request
+	 * @param  User       $user
+	 * @param OutputPage $output
+	 * @return boolean
+	 */
+	public static function onRobotsBeforeOutput( WebRequest $request, User $user, OutputPage $output ): bool {
+		if ( WebRequest::detectProtocol() === 'http' &&
+			self::httpsAllowed( $user, $request->getFullRequestURL() )
+		) {
+			$output->redirectProtocol( PROTO_HTTPS, 302, 'Robots-HTTPS-upgrade' );
+			$output->enableClientCache( false );
+		} elseif ( WebRequest::detectProtocol() === 'https' &&
+			!self::httpsAllowed( $user, $request->getFullRequestURL() )
+		) {
+			$output->redirectProtocol( PROTO_HTTP, 302, 'Robots-HTTP-downgrade' );
+			$output->enableClientCache( false );
+		}
+		return true;
+	}
+
+	public static function parserUpgradeVignetteUrls( string &$url ) {
+		if ( preg_match( self::VIGNETTE_IMAGES_HTTP_UPGRADABLE, $url ) && strpos( $url, 'http://' ) === 0 ) {
+			$url = wfHttpToHttps( $url );
+		}
+	}
+
+	/**
+	 * Make sure any "external" links to our own wikis that support HTTPS
+	 * are protocol-relative on output.
+	 *
+	 * @param  string  &$url
+	 * @param  string  &$text
+	 * @param  bool    &$link
+	 * @param  array   &$attribs
+	 * @return boolean
+	 */
+	public static function onLinkerMakeExternalLink( string &$url, string &$text, bool &$link, array &$attribs ): bool {
+		if ( wfHttpsAllowedForURL( $url ) ) {
+			$url = wfProtocolUrlToRelative( $url );
+		}
+		return true;
+	}
+
 	private static function httpsAllowed( User $user, string $url ): bool {
-		return wfHttpsAllowedForURL( $url ) && $user->isLoggedIn();
+		global $wgEnableHTTPSForAnons;
+		return wfHttpsAllowedForURL( $url ) &&
+			( !empty( $wgEnableHTTPSForAnons ) || $user->isLoggedIn() );
 	}
 
 	private static function httpsEnabledTitle( Title $title ): bool {
 		global $wgDBname;
 		return array_key_exists( $wgDBname, self::$httpsArticles ) &&
 			in_array( $title->getPrefixedDBKey(), self::$httpsArticles[ $wgDBname ] );
+	}
+
+	private static function shouldDowngradeRequest( Title $title, WebRequest $request ): bool {
+		global $wgDisableHTTPSDowngrade;
+		return empty( $wgDisableHTTPSDowngrade ) &&
+			!$request->getHeader( 'X-Wikia-WikiaAppsID' ) &&
+			!self::httpsEnabledTitle( $title ) &&
+			!self::isRawCSSorJS( $request );
+	}
+
+	private static function isRawCssOrJs( WebRequest $request ): bool {
+		global $wgJsMimeType;
+		return $request->getVal( 'action', 'view' ) === 'raw' &&
+			in_array( $request->getVal( 'ctype', '' ), [ $wgJsMimeType, 'text/css' ] );
 	}
 }

@@ -21,9 +21,14 @@ $wgAutoloadClasses['ResourceLoaderAdEngineBase'] = __DIR__ . '/ResourceLoaders/R
 $wgAutoloadClasses['ResourceLoaderScript'] = __DIR__ . '/ResourceLoaders/ResourceLoaderScript.php';
 $wgAutoloadClasses['AdEngine2ApiController'] = __DIR__ . '/AdEngine2ApiController.class.php';
 
+// Rec
+$wgAutoloadClasses['ResourceLoaderAdEngineBTCode'] = __DIR__ . '/ResourceLoaders/ResourceLoaderAdEngineBTCode.php';
+$wgAutoloadClasses['ResourceLoaderAdEngineILCode'] = __DIR__ . '/ResourceLoaders/ResourceLoaderAdEngineILCode.php';
+
 // Hooks for AdEngine2
 $wgHooks['AfterInitialize'][] = 'AdEngine2Hooks::onAfterInitialize';
 $wgHooks['InstantGlobalsGetNewsAndStoriesVariables'][] = 'AdEngine2Hooks::onInstantGlobalsGetNewsAndStoriesVariables';
+$wgHooks['InstantGlobalsGetFandomCreatorVariables'][] = 'AdEngine2Hooks::onInstantGlobalsGetFandomCreatorVariables';
 $wgHooks['InstantGlobalsGetVariables'][] = 'AdEngine2Hooks::onInstantGlobalsGetVariables';
 $wgHooks['OasisSkinAssetGroups'][] = 'AdEngine2Hooks::onOasisSkinAssetGroups';
 $wgHooks['OasisSkinAssetGroupsBlocking'][] = 'AdEngine2Hooks::onOasisSkinAssetGroupsBlocking';

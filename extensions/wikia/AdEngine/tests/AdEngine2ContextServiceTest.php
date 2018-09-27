@@ -233,16 +233,11 @@ class AdEngine2ContextServiceTest extends WikiaBaseTest {
 		$shortCat = 'shortcat';
 		// mech: using %S for hostname as RL can produce local links when $wgEnableLocalResourceLoaderLinks is set to true
 		$expectedAdEngineResourceURLFormat = '%S/load.php?cb=%d&debug=false&lang=%s&modules=%s&only=scripts&skin=oasis&*';
-		$expectedPrebidBidderUrl = 'http://i2.john-doe.wikia-dev.com/__am/123/group/-/pr3b1d_prod_js';
 
 		$assetsManagerMock = $this->getMockBuilder( 'AssetsManager' )
 			->disableOriginalConstructor()
 			->setMethods( [ 'getURL' ] )
 			->getMock();
-
-		$assetsManagerMock->expects( $this->any() )
-			->method( 'getURL' )
-			->willReturn( $expectedPrebidBidderUrl );
 
 		$this->mockStaticMethod( 'AssetsManager', 'getInstance', $assetsManagerMock );
 
@@ -347,9 +342,7 @@ class AdEngine2ContextServiceTest extends WikiaBaseTest {
 				'wikiVertical' => $vertical,
 				'mappedVerticalName' => $verticals['expectedMappedVertical']
 			],
-			'providers' => [
-				'evolve2' => true
-			],
+			'providers' => [],
 			'slots' => [
 			],
 			'forcedProvider' => $expectedForcedProvider
@@ -370,10 +363,6 @@ class AdEngine2ContextServiceTest extends WikiaBaseTest {
 		foreach ( $expectedSlots as $var => $val ) {
 			$expected['slots'][$var] = $val;
 		}
-
-		// Check for Prebid.js URL
-		$this->assertEquals( $expectedPrebidBidderUrl, $result['opts']['prebidBidderUrl'] );
-		unset($result['opts']['prebidBidderUrl']);
 
 		$this->assertEquals( $expected, $result );
 	}
@@ -403,6 +392,23 @@ class AdEngine2ContextServiceTest extends WikiaBaseTest {
 
 		$this->mockStaticMethod( 'ArticleVideoService', 'getFeatureVideoForArticle', $mediaId );
 		$this->mockStaticMethod( 'ArticleVideoContext', 'isRecommendedVideoAvailable', $expected );
+
+		// Mock HubService
+		$this->mockStaticMethod( 'HubService', 'getCategoryInfoForCity', (object)[
+			'cat_name' => 'test'
+		] );
+
+		// Mock WikiFactoryHub
+		$wikiFactoryHubMock = $this->getMockBuilder( 'WikiFactoryHub' )
+			->disableOriginalConstructor()
+			->setMethods( [ 'getCategoryId', 'getCategoryShort', 'getWikiVertical', 'getWikiCategoryNames' ] )
+			->getMock();
+
+		$wikiFactoryHubMock->expects( $this->any() )
+			->method( 'getCategoryShort' )
+			->willReturn( 'test' );
+
+		$this->mockStaticMethod( WikiFactoryHub::class, 'getInstance', $wikiFactoryHubMock );
 
 		$adContextService = new AdEngine2ContextService();
 		$result = $adContextService->getContext( $titleMock, 'test' );

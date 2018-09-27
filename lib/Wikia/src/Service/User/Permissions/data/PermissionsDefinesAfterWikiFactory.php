@@ -131,16 +131,6 @@ $wgGroupPermissions['user']['createclass'] = true;
 
 $wgGroupPermissions['user']['torunblocked'] = true;
 
-
-/* note: because TorBlock.php gives [user][torunblocked]=true without asking us,
- * we cant set this false in WF local permissions, so need switch to kill when needed.
- */
-if( !empty( $wgEnableTorBlockExt ) ) {
-	if( !empty($wgWikiaRemoveUserTorunblocked) ) {
-		$wgGroupPermissions['user']['torunblocked'] = false;
-	}
-}
-
 /*
  * permissions setup
  */
@@ -169,9 +159,12 @@ $wgGroupPermissions['*']['achievements-explicit'] = false;
 $wgGroupPermissions['sysop']['achievements-explicit'] = true;
 
 $wgGroupPermissions['*']['admindashboard'] = false;
+$wgGroupPermissions['global-discussions-moderator']['admindashboard'] = true;
+$wgGroupPermissions['helper']['admindashboard'] = true;
 $wgGroupPermissions['staff']['admindashboard'] = true;
 $wgGroupPermissions['sysop']['admindashboard'] = true;
-$wgGroupPermissions['helper']['admindashboard'] = true;
+$wgGroupPermissions['threadmoderator']['admindashboard'] = true;
+$wgGroupPermissions['vstf']['admindashboard'] = true;
 
 $wgGroupPermissions['sysop']['commentmove'] = true;
 $wgGroupPermissions['sysop']['commentedit'] = true;
@@ -267,11 +260,6 @@ $wgGroupPermissions['*']['createnewwiki'] = true;
 $wgGroupPermissions['staff']['createnewwiki'] = true;
 
 $wgGroupPermissions['staff']['createwikilimitsexempt'] = true;
-
-// permissions
-$wgGroupPermissions['staff']['finishcreate'] = true;
-$wgGroupPermissions['sysop']['finishcreate'] = true;
-$wgGroupPermissions['bureaucrat']['finishcreate'] = true;
 
 $wgGroupPermissions['*']['curatedcontent'] = false;
 $wgGroupPermissions['staff']['curatedcontent'] = true;
@@ -648,3 +636,7 @@ $wgGroupPermissions['util']['exportuserdata'] = true;
 // request to be forgotten
 $wgGroupPermissions['*']['requesttobeforgotten'] = false;
 $wgGroupPermissions['request-to-be-forgotten-admin']['requesttobeforgotten'] = true;
+
+// SUS-5473 | allow staff members to request a run of updateSpecialPages
+$wgGroupPermissions['*']['schedule-update-special-pages'] = false;
+$wgGroupPermissions['staff']['schedule-update-special-pages'] = true;

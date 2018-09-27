@@ -103,6 +103,7 @@ module.exports = function (config) {
 			'extensions/wikia/AdEngine/js/tracking/*.js',
 			'extensions/wikia/AdEngine/js/utils/*.js',
 			'extensions/wikia/AdEngine/js/video/**/*.js',
+			'extensions/wikia/AdEngine/js/wad/*.js',
 			'extensions/wikia/AdEngine/js/wrappers/*.js',
 
 			'extensions/wikia/AdEngine/js/spec/**/*.spec.js',
@@ -181,11 +182,7 @@ module.exports = function (config) {
 
 			// Global Shortcuts
 			'extensions/wikia/GlobalShortcuts/scripts/PageActions.js',
-			'extensions/wikia/GlobalShortcuts/scripts/spec/PageActions.spec.js',
-
-			// Tracking opt-out
-			'resources/wikia/modules/trackingOptOut.js',
-			'resources/wikia/modules/spec/trackingOptOut.spec.js'
+			'extensions/wikia/GlobalShortcuts/scripts/spec/PageActions.spec.js'
 		]
 	});
 };

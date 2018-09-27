@@ -31,7 +31,7 @@ $wgWikiaLocalSettingsPath = __FILE__;
 $wgWikiaDatacenter = getenv( 'WIKIA_DATACENTER' );
 
 if ( empty( $wgWikiaDatacenter ) ) {
-    throw new ConfigException( 'Datacenter not configured in /etc/environment.' ); 
+    throw new RuntimeException( 'Datacenter not configured in WIKIA_DATACENTER env variable.' );
 }
 
 /**
@@ -42,9 +42,55 @@ if ( empty( $wgWikiaDatacenter ) ) {
  */
 $wgWikiaEnvironment = getenv( 'WIKIA_ENVIRONMENT' );
 
+// CONFIG_REVISION: remove $wgWikiaDatacenter and $wgWikiaEnvironment from the global scope and only use it to load configuration
 if ( empty( $wgWikiaEnvironment ) ) {
-    throw new ConfigException( 'Environment not configured in /etc/environment.' ); 
+    throw new RuntimeException( 'Environment not configured in WIKIA_ENVIRONMENT env variable.' );
 }
+
+/**
+ * Temporary variable for Kubernetes migration
+ * If {@code true}, then logs will be sent to the configured socket address formatted as JSON, instead of using syslog.
+ */
+$wgLoggerLogToSocketOnly = $_ENV['LOG_SOCKET_ONLY'] ?? false;
+$wgLoggerSocketAddress = $_ENV['LOG_SOCKET_ADDRESS'] ?? 'tcp://127.0.0.1:9999';
+
+/* if {@code true}, then logs will be sent to STDOUT, overrides LOG_SOCKET_ONLY */
+$wgLoggerLogToStdOutOnly = $_ENV['LOG_STDOUT_ONLY'] ?? false;
+
+/**
+ * Name of the Kubernetes deployment, defined if the application is running in k8s.
+ * @var string|null $wgKubernetesDeploymentName
+ */
+$wgKubernetesDeploymentName = getenv( 'KUBERNETES_DEPLOYMENT_NAME' );
+
+/**
+ * Kubernetes namespace name, defined if the application is running in k8s.
+ * @var string|null $wgKubernetesNamespace
+ */
+$wgKubernetesNamespace = getenv( 'KUBERNETES_NAMESPACE' );
+
+/**
+ * Proxy to use for CURL requests.
+ * @see PLATFORM-1745
+ * @see includes/wikia/CurlMultiClient.php
+ * @see includes/HttpFunctions.php
+ * @var string $wgHTTPProxy
+ */
+if ( !empty( $wgKubernetesDeploymentName ) ) {
+	// SUS-5499: Use internal host name for MW->MW requests when running on Kubernetes
+	$wgHTTPProxy = "$wgKubernetesDeploymentName.$wgKubernetesNamespace:80";
+}
+else {
+	// SUS-5675 | TODO: remove when we switch fully to Kubernetes
+	$wgHTTPProxy = 'prod.border.service.consul:80';
+}
+
+/**
+ * Whether to use Kubernetes internal ingress for making requests to service dependencies on Kubernetes.
+ * This is only enabled if app itself is running on Kubernetes.
+ * @var bool $wgUseKubernetesInternalIngress
+ */
+$wgUseKubernetesInternalIngress = (bool) getenv( 'KUBERNETES_POD' );
 
 /**
  * Some environments share components (e.g. preview, verify, sandbox and stable
@@ -92,9 +138,7 @@ $wgServer = WebRequest::detectServer();
  * redirect loops when "pretty URLs" are used.
  * @var bool $wgUsePathInfo
  */
-$wgUsePathInfo = ( strpos(php_sapi_name(), 'cgi') === false ) &&
-        ( strpos(php_sapi_name(), 'apache2filter') === false ) &&
-        ( strpos(php_sapi_name(), 'isapi') === false );
+$wgUsePathInfo = ( php_sapi_name() == 'apache2handler' ) || ( php_sapi_name() == 'fpm-fcgi' ); # Wikia change - SUS-5825
 
 /**
  * Show EXIF data, on by default if available. Requires PHP's EXIF extension.
@@ -213,7 +257,7 @@ require_once "$IP/wgStyleVersion.php";
 $wgConf->localVHosts = array_merge(
     $wgWikiFactoryDomains,
     [
-        $wgWikiaBaseDomain, 
+        $wgWikiaBaseDomain,
         'uncyclopedia.org',
         'memory-alpha.org',
         'wowwiki.com',
@@ -257,7 +301,7 @@ $wgFSSwiftConfig = $wgFSSwiftDC[$wgWikiaDatacenter]['config'];
 $wgStylePath = "$wgResourceBasePath/skins";
 
 /**
- * 
+ *
  */
 $wgExtensionsPath = "$wgResourceBasePath/extensions";
 
@@ -267,9 +311,15 @@ $wgExtensionsPath = "$wgResourceBasePath/extensions";
 require "$IP/lib/Wikia/src/Service/User/Permissions/data/PermissionsDefinesBeforeWikiFactory.php";
 
 /**
+ * In some cases $wgMemc is still null at this point. Let's initialize it.
+ * It is needed for loading WikiFactory variables, as that code relies on WikiDataAccess which uses memcache
+ */
+$wgMemc = wfGetMainCache();
+
+/**
  * Apply WikiFactory settings.
  */
-try { 
+try {
     $oWiki = new WikiFactoryLoader( $_SERVER, $_ENV, $wgWikiFactoryDomains );
     $result = $oWiki->execute();
 
@@ -289,13 +339,6 @@ try {
 }
 
 /**
- * In some cases $wgMemc is still null at this point. Let's initialize it.
- * @see SUS-2699
- * @var string $wgDBcluster
- */
-$wgMemc = wfGetMainCache();
-
-/**
  * Disabled wikis do not have $wgDBcluster set at this point. We need to skip
  * this check to allow update.php and other maintenance scripts to process
  * those wikis.
@@ -313,7 +356,7 @@ require "$IP/lib/Wikia/src/Service/User/Permissions/data/PermissionsDefinesAfter
 
 // The above has originally been loaded before the statement below. Yet, the
 // old comment brings confusion:
-// 
+//
 // this has to be fired after extensions - because any extension may add some
 // new permissions (initialized with their default values)
 if ( !empty( $wgGroupPermissionsLocal ) ) {
@@ -331,7 +374,7 @@ $wgUserAttributeWhitelist = array_merge( $wgPublicUserAttributes, $wgPrivateUser
 
 require_once "$IP/includes/wikia/Emergency.php";
 
-if ( $wgDevelEnvironment ) {
+if ( $wgDevelEnvironment && empty( $wgRunningUnitTests ) ) {
     $wgDevBoxSettings = sprintf( '%s/../config/%s.php', $IP, gethostname() );
     if ( file_exists( $wgDevBoxSettings ) ) {
         require_once( $wgDevBoxSettings );

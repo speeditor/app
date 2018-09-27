@@ -131,21 +131,22 @@
 		 *
 		 * @param string event Name of event
 		 * @param object data Extra parameters to track
-		 * @param function onComplete callback function when tracking is completed (or fails)
 		 * @param integer timeout How long to wait before declaring the tracking request as failed (optional)
 		 */
-		function sendInternalTrackingEvent( event, data, onComplete, timeout ) {
+		function sendInternalTrackingEvent( event, data, timeout ) {
 			var head = document.head || document.getElementsByTagName( 'head' )[ 0 ] || document.documentElement,
-					script = document.createElement( 'script' ),
-					requestUrl = 'https://beacon.wikia-services.com/__track/special/' + encodeURIComponent( event ),
-					requestParameters = [],
-					p,
-					params,
-					userId = -1;
-
-			if (isOptedIn) {
-				userId = window.trackID || window.wgTrackID || 0;
-			}
+				script = document.createElement( 'script' ),
+				requestUrl = 'https://beacon.wikia-services.com/__track/special/' + encodeURIComponent( event ),
+				requestParameters = [],
+				p,
+				params,
+				userId = isOptedIn ? (
+					window.wgTrackID
+					|| ( window.M && window.M.getFromHeadDataStore && parseInt( window.M.getFromHeadDataStore( 'userId' ), 10 ) )
+					|| 0
+				) : -1,
+				wikiVariables = window.M && window.M.getFromHeadDataStore && window.M.getFromHeadDataStore( 'wikiVariables' ) || {},
+				trackingDimensions = window.M && window.M.getFromHeadDataStore && window.M.getFromHeadDataStore( 'trackingDimensions' ) || [];
 
 			timeout = timeout || 3000;
 
@@ -162,13 +163,13 @@
 
 			// Set up params object - this should stay in sync with /extensions/wikia/Track/Track.php
 			params = {
-				'c': window.wgCityId,
-				'x': window.wgDBname,
-				'a': window.wgArticleId,
-				'lc': window.wgContentLanguage,
-				'n': window.wgNamespaceNumber,
+				'c': window.wgCityId || wikiVariables.id,
+				'x': window.wgDBname || wikiVariables.dbName,
+				'a': window.wgArticleId || trackingDimensions[ 21 ],
+				'lc': window.wgContentLanguage || wikiVariables.language.content,
+				'n': window.wgNamespaceNumber || trackingDimensions[ 25 ],
 				'u': userId,
-				's': window.skin,
+				's': window.skin || trackingDimensions[ 4 ],
 				'beacon': window.beacon_id || '',
 				'cb': Math.floor( Math.random() * 99999 ),
 				'pv_unique_id': window.pvUID
@@ -202,10 +203,6 @@
 
 					// Dereference the script
 					script = undefined;
-
-					if ( typeof(onComplete) === 'function' ) {
-						onComplete();
-					}
 				}
 			};
 
@@ -250,10 +247,6 @@
 		 *                (WARNING: that "analytics" includes "internal" but not "ad")
 		 *            value (optional for analytics tracking)
 		 *                The integer value for the event.
-		 *            callbacks (optional)
-		 *                object containing callback data, keys are:
-		 *                	timeout (int)
-		 *                	complete (function)
 		 *
 		 * @param {...Object} [optionsN]
 		 *        Any number of additional hashes that will be merged into the first.
@@ -280,7 +273,6 @@
 				l,
 				tracking = {},
 				trackingMethod = 'none',
-				callbacks = {},
 				value;
 
 			// Merge options
@@ -296,13 +288,10 @@
 				}
 			}
 
-			callbacks = data.callbacks || callbacks;
 			browserEvent = data.browserEvent || browserEvent;
 			eventName = data.eventName || eventName;
 			trackingMethod = data.trackingMethod || trackingMethod;
 			tracking[ trackingMethod ] = true;
-
-			delete data.callbacks;
 
 			if ( tracking.none || ( tracking.analytics &&
 				// Category and action are compulsory for analytics tracking
@@ -343,7 +332,7 @@
 				}
 
 				if ( tracking.analytics || tracking.internal ) {
-					internalTrack(eventName, data, callbacks.complete, callbacks.timeout);
+					internalTrack(eventName, data);
 				}
 			}
 

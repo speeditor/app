@@ -7,9 +7,23 @@ define('ext.wikia.adEngine.tracking.adInfoTracker',  [
 	'ext.wikia.adEngine.utils.device',
 	'wikia.browserDetect',
 	'wikia.log',
+	'wikia.trackingOptIn',
 	'wikia.window',
+	require.optional('ext.wikia.adEngine.ml.billTheLizard'),
 	require.optional('ext.wikia.adEngine.ml.rabbit')
-], function (adTracker, geo, slotRegistry, pageLayout, deviceDetect, browserDetect, log, win, rabbit) {
+], function (
+	adTracker,
+	geo,
+	slotRegistry,
+	pageLayout,
+	deviceDetect,
+	browserDetect,
+	log,
+	trackingOptIn,
+	win,
+	billTheLizard,
+	rabbit
+) {
 	'use strict';
 
 	var logGroup = 'ext.wikia.adEngine.tracking.adInfoTracker';
@@ -17,11 +31,13 @@ define('ext.wikia.adEngine.tracking.adInfoTracker',  [
 	function getPosParameter(slotParams) {
 		var pos = (slotParams.pos || ''),
 			posArray = Array.isArray(pos) ? pos : pos.split(',');
-		return posArray[0];
+
+		return posArray[0].toLowerCase();
 	}
 
 	function prepareData(slotName, pageParams, slotParams, creative, bidders) {
 		var data,
+			isStickyEvent,
 			now = new Date(),
 			timestamp = now.getTime();
 
@@ -41,6 +57,8 @@ define('ext.wikia.adEngine.tracking.adInfoTracker',  [
 		slotParams = slotParams || {};
 		creative = creative || {};
 		bidders = bidders || {};
+
+		isStickyEvent = creative.status === 'sticked' || creative.status === 'unsticked';
 
 		data = {
 			'pv': pageParams.pv || '',
@@ -81,17 +99,20 @@ define('ext.wikia.adEngine.tracking.adInfoTracker',  [
 			'bidder_14': transformBidderPrice('pubmatic'),
 			'bidder_15': transformBidderPrice('beachfront'),
 			'bidder_16': transformBidderPrice('appnexusWebAds'),
+			'bidder_17': transformBidderPrice('kargo'),
 			'product_chosen': creative.adProduct || 'unknown',
 			'product_lineitem_id': creative.lineItemId || '',
 			'creative_id': creative.creativeId || '',
 			'creative_size': (creative.creativeSize || '').replace('[', '').replace(']', '').replace(',', 'x'),
 			'viewport_height': win.innerHeight || 0,
 			'ad_status': creative.status || 'unknown',
-			'scroll_y': slotRegistry.getScrollY(slotName) || 0,
+			'scroll_y': isStickyEvent ? slotRegistry.getCurrentScrollY() : slotRegistry.getScrollY(slotName),
 			'rabbit': (rabbit && rabbit.getAllSerializedResults()) || '',
+			'btl': (billTheLizard && billTheLizard.serialize()) || '',
 			'page_width': win.document.body.scrollWidth || '',
 			'page_layout': pageLayout.getSerializedData(slotName) || '',
-			'labrador': geo.getSamplingResults().join(';')
+			'labrador': geo.getSamplingResults().join(';'),
+			'opt_in': trackingOptIn.geoRequiresTrackingConsent() ? trackingOptIn.isOptedIn() ? 'yes' : 'no' : ''
 		};
 
 		log(['prepareData', slotName, data], log.levels.debug, logGroup);

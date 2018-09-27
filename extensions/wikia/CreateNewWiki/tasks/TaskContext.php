@@ -45,8 +45,14 @@ class TaskContext {
 	/** @var  int */
 	private $vertical;
 
+	/** @var  string */
+	private $description;
+
 	/** @var  array */
 	private $categories;
+
+	/** @var string */
+	private $fandomCreatorCommunityId;
 
 	/** @var  bool */
 	private $allAges;
@@ -54,11 +60,17 @@ class TaskContext {
 	/** @var  string ID of Celery task responsible for setting up a new wiki */
 	private $taskId;
 
+	/** @var  string IP address of a user that is creating the wiki */
+	private $ip;
+
 	/** @var  User */
 	private $founder;
 
 	/** @var bool $shouldCreateLanguageWikiWithPath */
 	private $shouldCreateLanguageWikiWithPath;
+
+	/** @var bool $shouldCreateEnglishWikisOnFandomCom */
+	private $shouldCreateEnglishWikisOnFandomCom;
 
 	public function __construct( $params ) {
 		foreach ($params as $key => $value) {
@@ -70,18 +82,22 @@ class TaskContext {
 		}
 	}
 
-	public static function newFromUserInput( $inputWikiName, $inputDomain, $language, $vertical, $categories, $allAges, $taskId ) {
-		global $wgCreateLanguageWikisWithPath;
+	public static function newFromUserInput( $inputWikiName, $inputDomain, $language, $vertical, $description, $categories, $allAges, $taskId, $ip, $fandomCreatorCommunityId ) {
+		global $wgCreateLanguageWikisWithPath, $wgCreateEnglishWikisOnFandomCom;
 
 		return new self( [
 			'inputWikiName' => $inputWikiName,
 			'inputDomain' => $inputDomain,
 			'language' => $language,
 			'vertical' => $vertical,
+			'description' => $description,
 			'categories' => $categories,
 			'allAges' => $allAges,
 			'taskId' => $taskId,
+			'ip' => $ip,
+			'fandomCreatorCommunityId' => $fandomCreatorCommunityId,
 			'shouldCreateLanguageWikiWithPath' => $wgCreateLanguageWikisWithPath,
+			'shouldCreateEnglishWikisOnFandomCom' => $wgCreateEnglishWikisOnFandomCom
 		] );
 	}
 
@@ -159,6 +175,10 @@ class TaskContext {
 		return $this->taskId;
 	}
 
+	public function getIP() {
+		return $this->ip;
+	}
+
 	// wikiDBW represents CreateWiki::newWiki->dbw
 
 	public function getDbName() {
@@ -211,6 +231,10 @@ class TaskContext {
 		$this->starterDb = $db;
 	}
 
+	public function getDescription() {
+		return $this->description;
+	}
+
 	public function getSiteName() {
 		return $this->siteName;
 	}
@@ -243,7 +267,19 @@ class TaskContext {
 		$this->founder = $founder;
 	}
 
+	public function isFandomCreatorCommunity() {
+		return !!$this->fandomCreatorCommunityId;
+	}
+
+	public function getFandomCreatorCommunityId() {
+		return $this->fandomCreatorCommunityId;
+	}
+
 	public function shouldCreateLanguageWikiWithPath(): bool {
 		return $this->shouldCreateLanguageWikiWithPath;
+	}
+
+	public function shouldCreateEnglishWikisOnFandomCom(): bool {
+		return $this->shouldCreateEnglishWikisOnFandomCom;
 	}
 }

@@ -13,7 +13,7 @@
  * @return string
  */
 function wfOutputHandler( $s ) {
-	global $wgDisableOutputCompression, $wgValidateAllHtml, $wgMangleFlashPolicy;
+	global $wgDisableOutputCompression, $wgValidateAllHtml, $wgMangleFlashPolicy, $wgCityId;
 	if ( $wgMangleFlashPolicy ) {
 		$s = wfMangleFlashPolicy( $s );
 	}
@@ -38,6 +38,7 @@ function wfOutputHandler( $s ) {
 			wfDoContentLength( strlen( $s ) );
 		}
 	}
+
 	return $s;
 }
 
