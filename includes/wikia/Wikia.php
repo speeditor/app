@@ -70,6 +70,11 @@ $wgHooks['WebRequestInitialized'][] = 'Wikia::outputXServedBySHeader';
 # Log user email changes
 $wgHooks['BeforeUserSetEmail'][] = 'Wikia::logEmailChanges';
 
+# ResourceLoader and api on empty/closed English wikis
+$wgHooks['ShowLanguageWikisIndex'][] = 'Wikia::onClosedOrEmptyWikiDomains';
+$wgHooks['ClosedWikiHandler'][] = 'Wikia::onClosedOrEmptyWikiDomains';
+
+
 use Wikia\Tracer\WikiaTracer;
 
 /**
@@ -1202,7 +1207,7 @@ class Wikia {
 			$request->response()->header("Content-Security-Policy-Report-Only: " .
 				"default-src https: 'self' data: blob:; " .
 				"script-src https: 'self' data: 'unsafe-inline' 'unsafe-eval' blob:; " .
-				"style-src https: 'self' 'unsafe-inline' blob:; report-uri " . $urlProvider->getUrl( 'csp-logger' ) . '/csp' );
+				"style-src https: 'self' 'unsafe-inline' blob:; report-uri " . $urlProvider->getUrl( 'csp-logger' ) . '/csp/app' );
 		}
 		return true;
 	}
@@ -1925,7 +1930,6 @@ class Wikia {
 		}
 		$surrogateKey = implode( ' ', $surrogateKeys );
 		header( 'Surrogate-Key: ' . $surrogateKey );
-		header( 'X-Surrogate-Key: ' . $surrogateKey );
 	}
 
 	public static function surrogateKey( $args ) {
@@ -1938,8 +1942,8 @@ class Wikia {
 		return 'mw-' . implode( '-', func_get_args() );
 	}
 
-	public static function purgeSurrogateKey( $key ) {
-		CeleryPurge::purgeBySurrogateKey( $key );
+	public static function purgeSurrogateKey( string $key, string $service = 'mediawiki' ) {
+		\Wikia\Factory\ServiceFactory::instance()->purgerFactory()->purger()->addSurrogateKey( $key, $service );
 	}
 
 	public static function isProductionEnv(): bool {
@@ -1950,5 +1954,12 @@ class Wikia {
 	public static function isDevEnv(): bool {
 		global $wgWikiaEnvironment;
 		return $wgWikiaEnvironment === WIKIA_ENV_DEV;
+	}
+
+	public static function onClosedOrEmptyWikiDomains( $requestUrl ) {
+		if ( $_SERVER['SCRIPT_NAME'] == '/load.php' ) {
+			return false;
+		}
+		return true;
 	}
 }

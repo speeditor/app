@@ -240,11 +240,13 @@ class WikiFactoryLoaderIntegrationTest extends WikiaDatabaseTest {
 	 * @param array $server
 	 */
 	public function testRegistersClosedWikiHandlerWhenWikiIsDisabled( int $expectedCityId, array $server ) {
+		$this->mockGlobalVariable( 'wgCommandLineMode', false );
+
 		$wikiFactoryLoader = new WikiFactoryLoader( $server, [] );
 		$result = $wikiFactoryLoader->execute();
 
 		$this->assertEquals( $expectedCityId, $result );
-		$this->assertInstanceOf( Closure::class, $GLOBALS['wgExtensionFunctions'][0] );
+		$this->assertEquals( true, $GLOBALS['wgIncludeClosedWikiHandler'] );
 	}
 
 	public function provideDisabledWikis() {

@@ -1,6 +1,7 @@
 <?php
 
 use Wikia\Service\User\Permissions\PermissionsServiceAccessor;
+use FandomCreator\CommunitySetup;
 
 class DWDimensionApiController extends WikiaApiController {
 	use PermissionsServiceAccessor;
@@ -21,6 +22,8 @@ class DWDimensionApiController extends WikiaApiController {
 	const BOT_USER_GROUP = 'bot';
 
 	const BOT_GLOBAL_USER_GROUP = 'bot-global';
+
+	const TEST_WIKI_VARIABLE_NAME = 'wgIsTestWiki';
 
 	private $connections = [];
 
@@ -72,7 +75,30 @@ class DWDimensionApiController extends WikiaApiController {
 		return null;
 	}
 
+	private function getTestWikisIDs() {
+		$testWikiVarId = WikiFactory::getVarIdByName( self::TEST_WIKI_VARIABLE_NAME );
+		return array_keys(
+			WikiFactory::getListOfWikisWithVar( $testWikiVarId, 'bool', '=', true )
+		);
+	}
+
+	protected function getFandomCreatorWikis( $limit, $afterWikiId ) {
+		$communityMap = [];
+		$fcCommunities = WikiFactory::getVariableForAllWikis( CommunitySetup::WF_VAR_FC_COMMUNITY_ID, $limit, $afterWikiId );
+		return array_reduce( $fcCommunities,
+			function( $acc, $pair ) {
+				$acc[ $pair[ 'city_id' ] ] = $pair[ 'value' ];
+				return $acc;
+			} , [] );
+	}
+
+	protected function parseUrl( $rowUrl ) {
+		$urlWithoutScheme = str_replace( ['http://', 'https://'], '', $rowUrl );
+		return trim( $urlWithoutScheme, '/' );
+	}
+
 	public function getWikis() {
+		$testWikis = $this->getTestWikisIDs();
 		$db = $this->getSharedDbSlave();
 
 		$limit = min( $db->strencode( $this->getRequest()->getVal(
@@ -82,7 +108,9 @@ class DWDimensionApiController extends WikiaApiController {
 
 		$query = str_replace( '$city_id', $afterWikiId,
 			DWDimensionApiControllerSQL::DIMENSION_WIKIS_QUERY );
-		$query = str_replace( '$limit', $limit, $query);
+		$query = str_replace( '$limit', $limit, $query );
+
+		$fcCommunityIdMap = $this->getFandomCreatorWikis( $limit, $afterWikiId );
 
 		$allVerticals = WikiFactoryHub::getInstance()->getAllVerticals();
 
@@ -93,8 +121,8 @@ class DWDimensionApiController extends WikiaApiController {
 				'wiki_id' => $row->wiki_id,
 				'dbname' => $row->dbname,
 				'sitename' => $row->sitename,
-				'url' => parse_url( $row->url, PHP_URL_HOST ),
-				'domain' => parse_url( $row->url, PHP_URL_HOST ),
+				'url' => $row->url,
+				'domain' => $this->parseUrl( $row->url ),
 				'title' => $row->title,
 				'founding_user_id' => $row->founding_user_id,
 				'public' => $row->public,
@@ -104,7 +132,9 @@ class DWDimensionApiController extends WikiaApiController {
 				'vertical_name' => $this->getVerticalName( $allVerticals, $row->vertical_id ),
 				'cluster' => $row->cluster,
 				'created_at' => $row->created_at,
-				'deleted' => $row->deleted
+				'deleted' => $row->deleted,
+				'is_test_wiki' => intval( in_array( $row->wiki_id, $testWikis ) ),
+				'fc_community_id' => $fcCommunityIdMap[ $row->wiki_id ] ?? null,
 			];
 		}
 		$db->freeResult( $dbResult );

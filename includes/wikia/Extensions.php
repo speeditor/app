@@ -94,6 +94,13 @@ if ( ! empty( $wgEnableWikisApi ) ) {
 	F::app()->registerApiController( 'WikisApiController', "{$IP}/includes/wikia/api/WikisApiController.class.php" );
 }
 
+// During migration drop parser expiry on non-English wikis to 24 hours (PLATFORM-3765)
+if ( ( !wfHttpsAllowedForURL( $wgServer ) && !empty( $wgFandomComMigrationScheduled ) ) ||
+	( wfHttpsEnabledForURL( $wgServer ) && $wgLanguageCode !== 'en' )
+) {
+	$wgParserCacheExpireTime = 24 * 3600;
+}
+
 /*
  * Code for http://lyrics.wikia.com/
  */
@@ -206,11 +213,6 @@ if ( !empty( $wgEnableEditPageLayoutExt ) ) {
 /**
  * load extensions by using configuration variables
  */
-
-#--- 1. Special::ProtectSite
-if (!empty($wgWikiaEnableSpecialProtectSiteExt)) {
-	include("$IP/extensions/wikia/SpecialProtectSite/SpecialProtectSite.php");
-}
 
 #--- 5. EventCountdown
 if (!empty($wgWikiaEnableEventCountdownExt)) {
@@ -355,7 +357,7 @@ if ( defined( 'REBUILD_LOCALISATION_CACHE_IN_PROGRESS' ) || !empty($wgEnableSema
 		foreach( $argv as $key => $value ) {
 			if( substr($value, 0 , 8 ) === "--server" ) {
 				if( $value === "--server" ) {
-					// next artument is server url
+					// next argument is server url
 					if( isset( $argv[ $key + 1 ] ) ) {
 						$server = $argv[ $key + 1 ];
 					}
@@ -409,7 +411,7 @@ if ( defined( 'REBUILD_LOCALISATION_CACHE_IN_PROGRESS' ) || !empty($wgEnableSema
 
 if ( !empty( $wgEnableScribuntoExt ) ) {
 	include "$IP/extensions/Scribunto/Scribunto.php";
-	
+
 	// SUS-5540: use the luasandbox extension as executor if it is available
 	if ( extension_loaded( 'luasandbox' ) ) {
 		$wgScribuntoDefaultEngine = 'luasandbox';
@@ -587,10 +589,6 @@ if (!empty($wgEnableLabeledSectionTransExt)) {
 	if (!empty($wgEnabledLabeledSectionTransVHeaders)) {
 		include("$IP/extensions/LabeledSectionTransclusion/lsth.php");
 	}
-}
-
-if (!empty($wgEnableMapLibExt)) {
-	include("$IP/extensions/3rdparty/MapLib/MapLib.php");
 }
 
 if (!empty($wgEnableVerbatimExt)) {
@@ -1014,11 +1012,6 @@ if (!empty( $wgEnablePaginatorExt )){
 	include( "$IP/extensions/wikia/Paginator/Paginator.setup.php" );
 }
 
-# Category Exhibition
-if (!empty($wgEnableCategoryExhibitionExt)) {
-		include("$IP/extensions/wikia/CategoryExhibition/CategoryExhibition_setup.php" );
-}
-
 /*
  * Send email from the app authenticated by a secret token
  */
@@ -1122,7 +1115,6 @@ if ( !empty( $wgEnableWikiFeatures ) ) {
 			'wgEnableAjaxPollExt',
 			'wgEnableBlogArticles',
 			'wgEnableArticleCommentsExt',
-			'wgEnableCategoryExhibitionExt',
 			'wgEnableWallExt',
 			'wgEnablePortableInfoboxEuropaTheme'
 		),
@@ -1297,7 +1289,6 @@ if ( !empty( $wgEnableVisualEditorExt ) ) {
 		case WIKIA_ENV_PROD:
 		case WIKIA_ENV_PREVIEW:
 		case WIKIA_ENV_VERIFY:
-		case WIKIA_ENV_STABLE:
 		case WIKIA_ENV_SANDBOX:
 			$wgVisualEditorParsoidHTTPProxy = 'http://prod.icache.service.consul:80';
 			$wgVisualEditorParsoidURL = 'http://prod.parsoid-cache';
@@ -1399,12 +1390,6 @@ $wgFileBackends['swift-backend'] = array(
 	'debug'         => false,
 	'url'           => "http://{$wgFSSwiftServer}/swift/v1",
 );
-
-// This extension is enabled globally and handles Sync between datacenters
-// It does work on devboxes if you need to enable for testing, but we are not running the sync script
-if ( empty( $wgDevelEnvironment ) ) {
-	include( "{$IP}/extensions/wikia/SwiftSync/SwiftSync.setup.php" );
-}
 
 if ( !empty( $wgEnableCoppaToolExt ) ) {
 	include( "{$IP}/extensions/wikia/CoppaTool/CoppaTool.setup.php" );
@@ -1705,10 +1690,6 @@ if ( !isset($wgEnableNewAuthModal) && in_array( $wgLanguageCode, [ 'es', 'ru' ] 
 	$wgEnableNewAuthModal = true;
 }
 
-if ( !empty( $wgEnableFlowTracking ) ) {
-	include "$IP/extensions/wikia/FlowTracking/FlowTracking.setup.php";
-}
-
 if ( !empty( $wgEnableArticleFeaturedVideo ) || !empty( $wgEnableArticleRelatedVideo ) ) {
 	include "$IP/extensions/wikia/ArticleVideo/ArticleVideo.setup.php";
 }
@@ -1727,6 +1708,10 @@ if ( !empty( $wgEnablePlaybuzzTagExt ) ) {
 
 if ( !empty( $wgEnableTrackingSettingsManager ) ) {
 	include "$IP/extensions/wikia/TrackingOptIn/TrackingSettingsManager.setup.php";
+}
+
+if ( !empty( $wgEnableResetTrackingPreferencesPage ) ) {
+	include "$IP/extensions/wikia/TrackingOptIn/ResetTrackingPreferences.setup.php";
 }
 
 include "$IP/extensions/wikia/JWPlayerTag/JWPlayerTag.setup.php";
@@ -1758,3 +1743,34 @@ include "$IP/extensions/wikia/AutoLogin/AutoLogin.setup.php";
 if ( !empty( $wgEnableFeedsAndPostsExt ) ) {
 	include "$IP/extensions/wikia/FeedsAndPosts/FeedsAndPosts.setup.php";
 }
+
+include "$IP/extensions/wikia/FandomComMigration/FandomComMigration.setup.php";
+
+// SUS-5817
+if ( $wgEnableFastlyInsights ) {
+	include "$IP/extensions/wikia/FastlyInsights/FastlyInsights.setup.php";
+}
+
+include "$IP/extensions/wikia/LanguageWikisIndex/LanguageWikisIndex.setup.php";
+
+if ( $wgIncludeClosedWikiHandler ) {
+	include "$IP/extensions/wikia/WikiFactory/Loader/closedWikiHandler.php";
+}
+
+// SRE-116
+include "$IP/extensions/wikia/ProtectSiteII/ProtectSite.php";
+
+// This extension is enabled globally and handles Sync between datacenters
+// It does work on devboxes if you need to enable for testing, but we are not running the sync script
+if ( empty( $wgDevelEnvironment ) ) {
+	include "$IP/lib/Wikia/src/SwiftSync/SwiftSync.setup.php";
+}
+
+// SEO-670 | SEO friendly category pages
+if ( !empty( $wgEnableCategoryPage3Ext ) ) {
+	include "$IP/extensions/wikia/CategoryPage3/CategoryPage3.setup.php";
+}
+
+// Category Exhibition
+// If you want to delete this extension remember to update CategoryPage3
+include("$IP/extensions/wikia/CategoryExhibition/CategoryExhibition_setup.php" );

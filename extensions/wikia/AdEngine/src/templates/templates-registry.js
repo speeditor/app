@@ -1,4 +1,10 @@
-import { BigFancyAdAbove, BigFancyAdBelow, BigFancyAdInPlayer } from '@wikia/ad-engine/dist/ad-products';
+import {
+	BigFancyAdAbove,
+	BigFancyAdBelow,
+	BigFancyAdInPlayer,
+	Roadblock,
+	StickyAd,
+} from '@wikia/ad-engine/dist/ad-products';
 import { slotTweaker, templateService } from '@wikia/ad-engine';
 
 import { getConfig as getMobileBfaaConfig } from './big-fancy-ad-above-mobile-config';
@@ -7,6 +13,9 @@ import { getConfig as getMobileBfpConfig } from './big-fancy-ad-in-player-mobile
 import { getConfig as getDesktopBfpConfig } from './big-fancy-ad-in-player-desktop-config';
 import { getConfig as getDesktopBfabConfig } from './big-fancy-ad-below-desktop-config';
 import { getConfig as getMobileBfabConfig } from './big-fancy-ad-below-mobile-config';
+import { getConfig as getDesktopRoadblockConfig } from './roadblock-desktop-config';
+import { getConfig as getMobileRoadblockConfig } from './roadblock-mobile-config';
+import { getConfig as getDesktopStickyAdConfig } from './sticky-ad-desktop-config';
 
 export default class TemplateRegistry {
 	static init(legacyContext, mercuryListener) {
@@ -14,9 +23,15 @@ export default class TemplateRegistry {
 		const getBfaaConfig = isMobile ? getMobileBfaaConfig : getDesktopBfaaConfig;
 		const getBfabConfig = isMobile ? getMobileBfabConfig : getDesktopBfabConfig;
 		const getBfpConfig = isMobile ? getMobileBfpConfig : getDesktopBfpConfig;
+		const getRoadblockConfig = isMobile ? getMobileRoadblockConfig : getDesktopRoadblockConfig;
 
 		templateService.register(BigFancyAdAbove, getBfaaConfig(mercuryListener));
 		templateService.register(BigFancyAdBelow, getBfabConfig());
 		templateService.register(BigFancyAdInPlayer, getBfpConfig());
+		templateService.register(Roadblock, getRoadblockConfig());
+
+		if (!isMobile) {
+			templateService.register(StickyAd, getDesktopStickyAdConfig());
+		}
 	}
 }

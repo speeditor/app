@@ -161,7 +161,9 @@ class WikiaRobots {
 		       $wgSitemapXmlExposeInRobots,
 		       $wgServer,
 		       $wgScriptPath,
-		       $wgRequest;
+		       $wgRequest,
+		       $wgCityId,
+		       $wgEnableHTTPSForAnons;
 
 		if ( !$this->accessAllowed || !empty( $wgRobotsTxtBlockedWiki ) ) {
 			// No crawling preview, verify, sandboxes, showcase, etc
@@ -169,32 +171,44 @@ class WikiaRobots {
 			return $robots;
 		}
 
-		// Sitemap
-		if ( !empty( $wgEnableSitemapXmlExt ) && !empty( $wgSitemapXmlExposeInRobots ) ) {
-			$robots->addSitemap( $wgServer . $wgScriptPath . '/sitemap-newsitemapxml-index.xml' );
-		}
+		if ( \Hooks::run( 'GenerateRobotsRules' ) ) {
+			// Sitemap
+			if ( !empty( $wgEnableSitemapXmlExt ) && !empty( $wgSitemapXmlExposeInRobots ) ) {
+				$sitemapUrl = $wgServer . $wgScriptPath . '/sitemap-newsitemapxml-index.xml';
+				// Enforce HTTPS on wikis where it is enabled by default
+				if ( wfHttpsAllowedForURL( $sitemapUrl ) &&
+					(
+						wfHttpsEnabledForURL( $sitemapUrl ) ||
+						!empty( $wgEnableHTTPSForAnons )
+					)
+				) {
+					$sitemapUrl = wfHttpToHttps( $sitemapUrl );
+				}
+				$robots->addSitemap( $sitemapUrl );
+			}
 
-		// Block namespaces
-		foreach ( $this->blockedNamespaces as $ns ) {
-			$robots->addDisallowedPaths(
-				$this->pathBuilder->buildPathsForNamespace( $ns )
-			);
-		}
+			// Block namespaces
+			foreach ( $this->blockedNamespaces as $ns ) {
+				$robots->addDisallowedPaths(
+					$this->pathBuilder->buildPathsForNamespace( $ns )
+				);
+			}
 
-		// Block additional paths
-		$robots->addDisallowedPaths( array_map( [ $this->pathBuilder, 'buildPath' ], $this->blockedPaths ) );
+			// Block additional paths
+			$robots->addDisallowedPaths( array_map( [ $this->pathBuilder, 'buildPath' ], $this->blockedPaths ) );
 
-		// Block params
-		foreach ( $this->blockedParams as $param ) {
-			$robots->addDisallowedPaths( $this->pathBuilder->buildPathsForParam( $param ) );
-		}
+			// Block params
+			foreach ( $this->blockedParams as $param ) {
+				$robots->addDisallowedPaths( $this->pathBuilder->buildPathsForParam( $param ) );
+			}
 
-		// Allow specific paths
-		$robots->addAllowedPaths( array_map( [ $this->pathBuilder, 'buildPath' ], $this->allowedPaths ) );
+			// Allow specific paths
+			$robots->addAllowedPaths( array_map( [ $this->pathBuilder, 'buildPath' ], $this->allowedPaths ) );
 
-		// Allow special pages
-		foreach ( array_keys( $this->allowedSpecialPages ) as $page ) {
-			$robots->addAllowedPaths( $this->pathBuilder->buildPathsForSpecialPage( $page, true ) );
+			// Allow special pages
+			foreach ( array_keys( $this->allowedSpecialPages ) as $page ) {
+				$robots->addAllowedPaths( $this->pathBuilder->buildPathsForSpecialPage( $page, true ) );
+			}
 		}
 
 		// Paranoid check to make sure language wikis return only their rules without calling other

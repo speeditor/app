@@ -29,14 +29,6 @@ class WikiFactoryTest extends WikiaBaseTest {
 		$this->assertEquals( $expected, $url );
 	}
 
-	/**
-	 * @dataProvider prepareUrlToParseDataProvider
-	 */
-	public function testPrepareUrlToParse( $url, $expected ) {
-		$url = WikiFactory::prepareUrlToParse( $url );
-		$this->assertEquals( $expected, $url );
-	}
-
 	public function getLocalEnvURLDataProvider() {
 		return [
 			[
@@ -50,12 +42,6 @@ class WikiFactoryTest extends WikiaBaseTest {
 				'forcedEnv' => null,
 				'url' => 'http://muppet.wikia.com/wiki/Muppet',
 				'expected' => 'http://muppet.verify.wikia.com/wiki/Muppet'
-			],
-			[
-				'env' => WIKIA_ENV_STABLE,
-				'forcedEnv' => null,
-				'url' => 'http://muppet.wikia.com/wiki/Muppet',
-				'expected' => 'http://muppet.stable.wikia.com/wiki/Muppet'
 			],
 			[
 				'env' => WIKIA_ENV_DEV,
@@ -112,18 +98,6 @@ class WikiFactoryTest extends WikiaBaseTest {
 				'expected' => 'http://gta.wikia.com'
 			],
 			[
-				'env' => WIKIA_ENV_STABLE,
-				'forcedEnv' => null,
-				'url' => 'http://gta.wikia.com/',
-				'expected' => 'http://gta.stable.wikia.com'
-			],
-			[
-				'env' => WIKIA_ENV_STABLE,
-				'forcedEnv' => null,
-				'url' => 'http://gta.stable.wikia.com/wiki/test',
-				'expected' => 'http://gta.stable.wikia.com/wiki/test'
-			],
-			[
 				'env' => WIKIA_ENV_PROD,
 				'forcedEnv' => null,
 				'url' => 'https://www.wikia.com',
@@ -146,6 +120,12 @@ class WikiFactoryTest extends WikiaBaseTest {
 				'forcedEnv' => null,
 				'url' => 'https://muppet.wikia.com/wiki',
 				'expected' => 'https://muppet.' . static::MOCK_DEV_NAME . '.wikia-dev.us/wiki'
+			],
+			[
+				'env' => WIKIA_ENV_DEV,
+				'forcedEnv' => null,
+				'url' => 'https://muppet.fandom.com/wiki',
+				'expected' => 'https://muppet.' . static::MOCK_DEV_NAME . '.fandom-dev.us/wiki'
 			],
 			[
 				'env' => WIKIA_ENV_PROD,
@@ -211,6 +191,14 @@ class WikiFactoryTest extends WikiaBaseTest {
 				'http://community-name.wikia.com',
 			]
 		];
+	}
+
+	/**
+	 * @dataProvider prepareUrlToParseDataProvider
+	 */
+	public function testPrepareUrlToParse( $url, $expected ) {
+		$url = WikiFactory::prepareUrlToParse( $url );
+		$this->assertEquals( $expected, $url );
 	}
 
 	public function testRenderValueOfVariableWithoutValue() {
